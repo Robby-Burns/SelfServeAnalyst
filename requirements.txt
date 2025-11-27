@@ -1,0 +1,10 @@
+streamlit
+langchain
+langchain-openai
+langchain-community
+langchain-experimental
+langgraph
+docker
+python-dotenv
+pytest
+sqlalchemy

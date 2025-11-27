@@ -1,0 +1,28 @@
+# Security (NEVER COMMIT THESE)
+.env
+.env.local
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Python Cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# IDE Settings (PyCharm/VS Code)
+.idea/
+.vscode/
+
+# Local Database (Users should generate their own using setup_db.py)
+*.db
+*.sqlite
+
+# Generated Charts (Keep the repo clean)
+charts/*
+*.png
+
+# Mac System Files (If you ever move to Mac)
+.DS_Store
