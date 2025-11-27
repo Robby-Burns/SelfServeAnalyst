@@ -16,16 +16,22 @@ from langgraph.graph import StateGraph, END
 # --- 1. CONFIGURATION & CONSTANTS ---
 st.set_page_config(page_title="Credit Union AI Analyst", page_icon="🏦", layout="centered")
 
+# Load Environment Variables (API Keys & DB Config)
+load_dotenv()
+
 CHART_DIR = "charts"
-DB_URI = "sqlite:///credit_union.db"
 DOCKER_CONTAINER_NAME = "sandbox"
 DOCKER_WORKDIR = "/workspace"
 
+# DATABASE SETUP (Agnostic)
+# 1. We check the .env file for a 'DATABASE_URL'
+# 2. If not found, we fall back to the local SQLite file
+# NOTE: If using PostgreSQL/MySQL, ensure you install the driver (e.g., pip install psycopg2)
+default_db = "sqlite:///credit_union.db"
+DB_URI = os.getenv("DATABASE_URL", default_db)
+
 # Ensure charts directory exists
 os.makedirs(CHART_DIR, exist_ok=True)
-
-# Load Environment Variables
-load_dotenv()
 
 
 # --- 2. CORE LOGIC (Cached) ---
@@ -199,7 +205,6 @@ if prompt := st.chat_input("Ask about members, loans, or trends..."):
             new_charts = list(current_charts - existing_charts)
 
             # Smart Detection: If we find a new file, grab it.
-            # If multiple were made (rare), grab the last one.
             new_image_path = new_charts[0] if new_charts else None
 
             # 3. Display Response

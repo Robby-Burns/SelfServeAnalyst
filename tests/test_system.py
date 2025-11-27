@@ -2,10 +2,15 @@ import pytest
 import docker
 import os
 import sqlite3
+from dotenv import load_dotenv  # <--- NEW IMPORT
 from langchain_community.utilities import SQLDatabase
 
+# Load environment to get the same DB as the App
+load_dotenv()
+
 # CONSTANTS
-DB_URI = "sqlite:///credit_union.db"
+# Now the test uses the exact same DB defined in your .env
+DB_URI = os.getenv("DATABASE_URL", "sqlite:///credit_union.db")
 CONTAINER_NAME = "sandbox"
 
 
