@@ -25,7 +25,7 @@ class PricingConfig(Base):
     __tablename__ = "pricing_config"
 
     id = Column(Integer, primary_key=True)
-    analysis_price = Column(Float, nullable=False, default=15.00)
+    analysis_price = Column(Float, nullable=False, default=5.00)
     currency = Column(String(10), nullable=False, default="USD")
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -145,12 +145,12 @@ def init_db(db_uri=None):
     Base.metadata.create_all(_engine)
     _SessionFactory = scoped_session(sessionmaker(bind=_engine))
 
-    # Ensure default pricing config exists (15.00 USD)
+    # Ensure default pricing config exists (5.00 USD)
     session = _SessionFactory()
     try:
         config = session.query(PricingConfig).first()
         if not config:
-            config = PricingConfig(id=1, analysis_price=15.00, currency="USD")
+            config = PricingConfig(id=1, analysis_price=5.00, currency="USD")
             session.add(config)
             session.commit()
     finally:
@@ -179,7 +179,7 @@ def get_pricing():
     try:
         config = session.query(PricingConfig).first()
         if not config:
-            config = PricingConfig(id=1, analysis_price=15.00, currency="USD")
+            config = PricingConfig(id=1, analysis_price=5.00, currency="USD")
             session.add(config)
             session.commit()
         return float(config.analysis_price), str(config.currency)
