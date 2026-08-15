@@ -459,10 +459,11 @@ RETURN
 
 
 # --- PROMINENT LOGO IN TOP HEADER ---
+logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo.png")
 col_logo_l, col_logo_c, col_logo_r = st.columns([5, 2, 5])
 with col_logo_c:
-    if os.path.exists("logo.png"):
-        st.image("logo.png", width=115)
+    if os.path.exists(logo_path):
+        st.image(logo_path, width=115)
 
 st.markdown("""
 <div style="text-align: center; margin-bottom: 1.2rem;">
