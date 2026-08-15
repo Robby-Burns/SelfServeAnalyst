@@ -107,21 +107,36 @@ class CodeAnalyzer:
                 "message": f"Module length ({total_loc} lines) exceeds maintainability recommendations (>300 lines)."
             })
 
-        # Language Detection
-        lang = "Python"
+        # Strict Language Detection by Extension & Syntax
+        ext = os.path.splitext(filename)[1].lower()
         lower_code = code_text.lower()
-        if filename.endswith(".sql") or "select " in lower_code or "from " in lower_code or "insert into " in lower_code:
+
+        if ext in (".py", ".pyw"):
+            lang = "Python"
+        elif ext == ".sql":
             lang = "SQL"
-        elif filename.endswith(".dax") or "calculate(" in lower_code or "summarize(" in lower_code:
+        elif ext == ".dax":
             lang = "DAX"
-        elif filename.endswith((".js", ".ts", ".jsx", ".tsx")):
-            lang = "JavaScript/TypeScript"
-        elif filename.endswith((".cpp", ".c", ".h", ".hpp")):
+        elif ext in (".js", ".mjs", ".cjs", ".jsx"):
+            lang = "JavaScript"
+        elif ext in (".ts", ".tsx"):
+            lang = "TypeScript"
+        elif ext in (".cpp", ".c", ".h", ".hpp", ".cc", ".cxx"):
             lang = "C++"
-        elif filename.endswith(".json"):
-            lang = "JSON Data Structure"
-        elif filename.endswith(".txt"):
-            lang = "Text / Documentation"
+        elif ext == ".json":
+            lang = "JSON"
+        elif ext in (".txt", ".md"):
+            lang = "Text"
+        else:
+            # Fallback heuristic only when extension is unknown
+            if ast_parsed or ("def " in lower_code and "import " in lower_code):
+                lang = "Python"
+            elif "select " in lower_code and "from " in lower_code and "where " in lower_code:
+                lang = "SQL"
+            elif "calculate(" in lower_code or "summarize(" in lower_code:
+                lang = "DAX"
+            else:
+                lang = "Python"
 
         # Extract Dependencies / Imports
         dependencies = []

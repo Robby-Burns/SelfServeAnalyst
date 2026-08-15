@@ -41,25 +41,30 @@ from pdf_generator import generate_analysis_pdf, create_reports_zip, REPORTS_DIR
 # Initialize Database Schema & Authoritative Pricing ($5.00 default)
 init_db()
 
-# Page Setup - Focused & Centered
+# Page Setup - Wide layout to support 2-column craftsmanship hero
 st.set_page_config(
-    page_title="The Ram & Chisel — Code Quality & Security Audit",
+    page_title="The Ram & Chisel — Precision Code Quality & Security Forge",
     page_icon="🛡️",
-    layout="centered"
+    layout="wide"
 )
 
-# Custom Styling for The Ram and Chisel (Burgundy, Gold, Cream Palette)
+# Custom Styling for The Ram and Chisel (Forge Maroon, Burnished Gold & Ember Accent)
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
 
     :root {
-        --brand-burgundy: #4A1525;
-        --brand-burgundy-dark: #2A0B13;
-        --brand-gold: #D8A246;
-        --brand-gold-light: #FBF6EC;
-        --brand-gold-border: #E8D3A7;
+        --brand-maroon: #3D1220;
+        --brand-maroon-dark: #240711;
+        --brand-maroon-light: #521A2C;
+        --brand-gold: #C9A24B;
+        --brand-gold-light: #FAF4E8;
+        --brand-gold-border: #E2CFAB;
+        --brand-ember: #E65100;
+        --brand-ember-hover: #BF360C;
+        --brand-ember-light: #FFF3E0;
         --bg-cream: #FAF7F2;
+        --bg-card: #FFFFFF;
         --text-dark: #1F070E;
         --text-muted: #5C4A50;
     }
@@ -70,178 +75,372 @@ st.markdown("""
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
-    /* Top Brand Center Header */
-    .brand-top-container {
+    /* Forge Header */
+    .forge-header-container {
         text-align: center;
-        padding-top: 0.5rem;
-        margin-bottom: 1.5rem;
+        padding-top: 0.2rem;
+        margin-bottom: 1.2rem;
     }
 
-    .brand-logo-text {
+    .forge-logo-text {
         font-family: 'Cinzel', serif;
-        font-size: 1.9rem;
-        font-weight: 800;
+        font-size: 2.1rem;
+        font-weight: 900;
         letter-spacing: 0.08em;
-        color: var(--brand-burgundy);
-        line-height: 1.15;
-        margin-top: 8px;
+        color: var(--brand-maroon);
+        line-height: 1.1;
+        margin-top: 6px;
     }
 
-    .brand-tagline-text {
-        font-size: 0.85rem;
-        font-weight: 600;
+    .forge-tagline-text {
+        font-size: 0.88rem;
+        font-weight: 700;
         color: var(--brand-gold);
         text-transform: uppercase;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.16em;
         margin-top: 4px;
     }
 
-    /* Hero Section */
-    .hero-container {
-        text-align: center;
-        padding: 0.5rem 0 1.5rem 0;
+    .gold-divider {
+        height: 2px;
+        background: linear-gradient(90deg, transparent 0%, var(--brand-gold) 35%, var(--brand-gold) 65%, transparent 100%);
+        margin: 14px auto 20px auto;
+        width: 85%;
+        border: none;
     }
 
-    .hero-title {
+    /* Two-Column Hero Styling */
+    .hero-pitch-title {
         font-family: 'Cinzel', serif;
         font-size: 2.1rem;
         font-weight: 800;
-        letter-spacing: 0.04em;
-        color: var(--brand-burgundy);
-        margin-bottom: 0.4rem;
+        color: var(--brand-maroon);
         line-height: 1.2;
+        margin-bottom: 0.6rem;
     }
 
-    .hero-subtitle {
+    .hero-pitch-subtitle {
         font-size: 1.05rem;
         color: var(--text-muted);
+        line-height: 1.5;
         margin-bottom: 1.2rem;
-        font-weight: 400;
     }
 
-    .hero-price {
-        font-size: 1.6rem;
+    .price-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--brand-maroon);
+        border: 2px solid var(--brand-gold);
+        border-radius: 30px;
+        padding: 8px 18px;
+        color: var(--brand-gold-light);
         font-weight: 700;
-        color: var(--brand-burgundy);
-        margin-bottom: 0.2rem;
+        font-size: 1.05rem;
+        margin-bottom: 1.4rem;
+        box-shadow: 0 4px 12px rgba(61, 18, 32, 0.15);
     }
 
-    .hero-price-sub {
-        font-size: 0.88rem;
-        color: var(--brand-gold);
+    .price-pill b {
+        color: #FFFFFF;
+        font-size: 1.15rem;
+    }
+
+    /* Code Fluency Before/After Panel */
+    .code-fluency-container {
+        background: #180D12;
+        border: 1.5px solid var(--brand-gold-border);
+        border-radius: 10px;
+        padding: 14px 16px;
+        margin-top: 0.5rem;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .code-fluency-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #38202A;
+        padding-bottom: 8px;
+        margin-bottom: 10px;
+        font-size: 0.8rem;
         font-weight: 600;
-        letter-spacing: 0.04em;
-        margin-bottom: 1.5rem;
+        color: var(--brand-gold);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
     }
 
-    /* Scan Box */
-    .scan-box {
-        background-color: #FFFFFF;
+    .code-fluency-body {
+        font-size: 0.82rem;
+        color: #E2D3D8;
+        line-height: 1.5;
+    }
+
+    .code-highlight-flaw {
+        color: #FF8A65;
+        background: rgba(230, 81, 0, 0.2);
+        padding: 2px 4px;
+        border-radius: 3px;
+    }
+
+    .code-fluency-result {
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px dashed #4D2837;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 0.82rem;
+    }
+
+    /* Centerpiece Upload Card */
+    .upload-forge-card {
+        background: var(--bg-card);
+        border: 2.5px dashed var(--brand-gold);
+        border-radius: 12px;
+        padding: 24px 22px;
+        text-align: center;
+        box-shadow: 0 4px 16px rgba(61, 18, 32, 0.05);
+        transition: all 0.2s ease;
+    }
+
+    .upload-forge-card:hover {
+        border-color: var(--brand-ember);
+        box-shadow: 0 6px 20px rgba(230, 81, 0, 0.12);
+    }
+
+    .upload-icon {
+        font-size: 2.2rem;
+        margin-bottom: 6px;
+    }
+
+    .upload-title {
+        font-family: 'Cinzel', serif;
+        font-weight: 700;
+        font-size: 1.25rem;
+        color: var(--brand-maroon);
+        margin-bottom: 4px;
+    }
+
+    .upload-sub {
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+    }
+
+    .supported-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: center;
+        margin-top: 10px;
+    }
+
+    .badge-tag {
+        background: var(--brand-gold-light);
+        border: 1px solid var(--brand-gold-border);
+        color: var(--brand-maroon);
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 4px;
+    }
+
+    /* Scan Result Box */
+    .scan-summary-card {
+        background: #FFFFFF;
         border: 1.5px solid var(--brand-gold-border);
         border-radius: 10px;
         padding: 16px 20px;
         margin: 1.2rem 0;
-        box-shadow: 0 2px 8px rgba(74, 21, 37, 0.04);
+        box-shadow: 0 3px 10px rgba(61, 18, 32, 0.06);
     }
 
-    .scan-header {
+    .scan-summary-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         font-weight: 700;
-        color: var(--brand-burgundy);
         font-size: 1.05rem;
-        margin-bottom: 6px;
+        color: var(--brand-maroon);
     }
 
-    .scan-summary {
-        font-size: 0.92rem;
-        color: var(--text-muted);
-        margin-bottom: 10px;
-    }
-
-    .price-calculation {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--brand-burgundy);
+    .forge-price-callout {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: var(--brand-maroon);
         background: var(--brand-gold-light);
-        padding: 8px 14px;
-        border-radius: 6px;
-        border-left: 4px solid var(--brand-gold);
-        margin: 10px 0;
+        padding: 10px 16px;
+        border-radius: 8px;
+        border-left: 5px solid var(--brand-gold);
+        margin: 12px 0;
     }
 
-    /* Privacy line */
-    .privacy-notice {
-        text-align: center;
+    /* Hallmark / Wax Seal Report Badge */
+    .hallmark-container {
+        background: linear-gradient(135deg, #FAF4E8 0%, #FFFFFF 100%);
+        border: 2px solid var(--brand-gold);
+        border-radius: 12px;
+        padding: 18px 24px;
+        margin: 1.5rem 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 4px 16px rgba(201, 162, 75, 0.15);
+    }
+
+    .hallmark-stamp {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .hallmark-seal {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--brand-maroon);
+        border: 2.5px solid var(--brand-gold);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--brand-gold-light);
+        font-size: 1.5rem;
+        box-shadow: 0 3px 10px rgba(61, 18, 32, 0.25);
+    }
+
+    .hallmark-details h3 {
+        margin: 0;
+        font-family: 'Cinzel', serif;
+        font-size: 1.4rem;
+        color: var(--brand-maroon);
+    }
+
+    .hallmark-details p {
+        margin: 2px 0 0 0;
+        font-size: 0.88rem;
         color: var(--text-muted);
-        font-size: 0.86rem;
-        margin-top: 0.8rem;
-        margin-bottom: 1.2rem;
     }
 
-    /* Primary Buttons */
-    .stButton > button, div.stDownloadButton > button {
-        background: linear-gradient(135deg, var(--brand-burgundy) 0%, var(--brand-burgundy-dark) 100%) !important;
+    .grade-chip {
+        padding: 6px 18px;
+        border-radius: 30px;
+        font-weight: 800;
+        font-size: 1.15rem;
+        letter-spacing: 0.04em;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .grade-chip-a {
+        background: #E8F5E9;
+        color: #1B5E20;
+        border: 1.5px solid #81C784;
+    }
+
+    .grade-chip-b {
+        background: #FFF8E1;
+        color: #F57F17;
+        border: 1.5px solid #FFD54F;
+    }
+
+    .grade-chip-c {
+        background: #FFF3E0;
+        color: #E65100;
+        border: 1.5px solid #FFB74D;
+    }
+
+    .grade-chip-f {
+        background: #FFEBEE;
+        color: #B71C1C;
+        border: 1.5px solid #E57373;
+    }
+
+    /* Severity Tags */
+    .sev-tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-right: 6px;
+    }
+    .sev-high { background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; }
+    .sev-med { background: #FFF3E0; color: #E65100; border: 1px solid #FFE0B2; }
+    .sev-low { background: #E3F2FD; color: #1565C0; border: 1px solid #BBDEFB; }
+
+    /* Primary Marketing / Checkout CTA Button (Ember Highlight) */
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, var(--brand-ember) 0%, var(--brand-ember-hover) 100%) !important;
         color: #FFFFFF !important;
-        font-weight: 700 !important;
-        font-size: 1.05rem !important;
-        border: 1.5px solid var(--brand-gold) !important;
+        font-weight: 800 !important;
+        font-size: 1.1rem !important;
+        letter-spacing: 0.03em !important;
+        border: 1.5px solid #FF8A65 !important;
         border-radius: 8px !important;
-        padding: 0.65rem 1.75rem !important;
-        box-shadow: 0 4px 14px rgba(74, 21, 37, 0.18) !important;
+        padding: 0.75rem 2rem !important;
+        box-shadow: 0 6px 18px rgba(230, 81, 0, 0.28) !important;
         transition: all 0.2s ease !important;
         width: 100%;
     }
 
-    .stButton > button:hover, div.stDownloadButton > button:hover {
-        background: linear-gradient(135deg, var(--brand-gold) 0%, #C59B27 100%) !important;
-        color: var(--brand-burgundy-dark) !important;
-        border-color: var(--brand-burgundy) !important;
-        box-shadow: 0 6px 18px rgba(216, 162, 70, 0.35) !important;
+    .stButton > button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #FF6D00 0%, #E65100 100%) !important;
+        box-shadow: 0 8px 24px rgba(230, 81, 0, 0.42) !important;
+        transform: translateY(-1px);
     }
 
-    /* Navigation Tabs */
+    /* In-Product Utilitarian Action Buttons */
+    .stButton > button:not([kind="primary"]), div.stDownloadButton > button {
+        background: var(--brand-maroon) !important;
+        color: var(--brand-gold-light) !important;
+        font-weight: 600 !important;
+        font-size: 0.92rem !important;
+        border: 1px solid var(--brand-gold) !important;
+        border-radius: 6px !important;
+        padding: 0.5rem 1.2rem !important;
+        box-shadow: 0 2px 6px rgba(61, 18, 32, 0.1) !important;
+        transition: all 0.15s ease !important;
+        width: 100%;
+    }
+
+    .stButton > button:not([kind="primary"]):hover, div.stDownloadButton > button:hover {
+        background: var(--brand-maroon-light) !important;
+        border-color: #FFFFFF !important;
+        color: #FFFFFF !important;
+    }
+
+    /* Tabs Navigation */
     .stTabs [data-baseweb="tab-list"] {
         gap: 12px;
-        border-bottom: 1.5px solid var(--brand-gold-border);
-        margin-bottom: 1.5rem;
+        border-bottom: 2px solid var(--brand-gold-border);
+        margin-bottom: 1.6rem;
     }
 
     .stTabs [data-baseweb="tab"] {
         font-weight: 600;
-        font-size: 0.95rem;
+        font-size: 0.98rem;
         color: var(--text-muted);
-        padding: 10px 16px;
+        padding: 10px 18px;
         border-radius: 6px 6px 0 0;
         background-color: transparent;
     }
 
     .stTabs [aria-selected="true"] {
-        color: var(--brand-burgundy) !important;
-        border-bottom: 3px solid var(--brand-gold) !important;
-        font-weight: 700 !important;
+        color: var(--brand-maroon) !important;
+        border-bottom: 3.5px solid var(--brand-gold) !important;
+        font-weight: 800 !important;
     }
 
-    /* Info Cards */
-    .info-card {
-        background-color: #FFFFFF;
-        border: 1px solid var(--brand-gold-border);
+    /* Report Card Container */
+    .report-card {
+        background: #FFFFFF;
+        border: 1.5px solid var(--brand-gold-border);
         border-radius: 10px;
-        padding: 18px 20px;
-        margin-bottom: 1.2rem;
-        box-shadow: 0 2px 8px rgba(74, 21, 37, 0.03);
-    }
-
-    .info-card h4 {
-        color: var(--brand-burgundy);
-        margin-top: 0;
-        margin-bottom: 6px;
-        font-size: 1.05rem;
-    }
-
-    .info-card p {
-        color: var(--text-muted);
-        font-size: 0.92rem;
-        line-height: 1.5;
-        margin-bottom: 0;
+        padding: 24px;
+        margin-top: 1rem;
+        box-shadow: 0 4px 14px rgba(61, 18, 32, 0.05);
     }
 
     header {visibility: hidden;}
@@ -251,7 +450,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- SAMPLE CODE ASSETS FOR PREVIEW TAB ---
+# --- SAMPLE CODE ASSETS FOR EXAMPLE PREVIEW TAB ---
 SAMPLE_FILES = {
     "sample_delinquent_loans.sql": {
         "filename": "sample_delinquent_loans.sql",
@@ -354,13 +553,14 @@ RETURN
 
 # --- PROMINENT LOGO ON TOP ---
 logo_path = "logo.png"
-st.markdown('<div class="brand-top-container">', unsafe_allow_html=True)
-col_l, col_c, col_r = st.columns([2, 1, 2])
-with col_c:
+st.markdown('<div class="forge-header-container">', unsafe_allow_html=True)
+col_h1, col_h2, col_h3 = st.columns([5, 2, 5])
+with col_h2:
     if os.path.exists(logo_path):
-        st.image(logo_path, width=82)
-st.markdown('<div class="brand-logo-text">THE RAM & CHISEL</div>', unsafe_allow_html=True)
-st.markdown('<div class="brand-tagline-text">Precision Code Quality, Security & Documentation Audit</div>', unsafe_allow_html=True)
+        st.image(logo_path, width=95)
+st.markdown('<div class="forge-logo-text">THE RAM & CHISEL</div>', unsafe_allow_html=True)
+st.markdown('<div class="forge-tagline-text">⚒️ Precision Code Quality, Security & Documentation Forge</div>', unsafe_allow_html=True)
+st.markdown('<div class="gold-divider"></div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 
@@ -371,33 +571,24 @@ unit_price_display = f"${unit_price:.2f} {currency}" if currency != "USD" else f
 
 # --- CLEAN NAVIGATION TABS ---
 tab_analyze, tab_preview, tab_how, tab_security, tab_signin = st.tabs([
-    "Analyze",
-    "Example Preview",
-    "How It Works",
-    "Security",
-    "Sign In"
+    "⚒️ Analyze Code",
+    "⚡ Example Preview",
+    "📖 How It Works",
+    "🛡️ Security & Privacy",
+    "🏢 Sign In"
 ])
 
 
 # ==============================================================================
-# 1. ANALYZE (CLEAN FILE/FOLDER UPLOAD ONLY)
+# 1. ANALYZE (TWO-COLUMN FORGE HERO & CENTERPIECE UPLOAD)
 # ==============================================================================
 with tab_analyze:
-    st.markdown(f"""
-    <div class="hero-container">
-        <div class="hero-title">Code Quality & Security Audit</div>
-        <div class="hero-subtitle">Upload your source files or project repository. Get professional Markdown & PDF audits.</div>
-        <div class="hero-price">{unit_price_display} per analyzed source file</div>
-        <div class="hero-price-sub">NO SUBSCRIPTION. NO ACCOUNT REQUIRED. ONE SIMPLE PAYMENT.</div>
-    </div>
-    """, unsafe_allow_html=True)
-
     # Check for Stripe payment return session
     query_params = st.query_params
     return_session_id = query_params.get("session_id")
 
     if return_session_id:
-        st.info("Verifying payment confirmation with Stripe...")
+        st.info("⚡ Verifying payment confirmation with Stripe...")
         verification = verify_checkout_session(return_session_id)
 
         if verification.get("success"):
@@ -405,13 +596,12 @@ with tab_analyze:
             analysis = get_analysis(analysis_id)
 
             if analysis:
-                st.success(f"Payment verified: {analysis.file_count} file(s) paid (${analysis.price:.2f} {analysis.currency}).")
+                st.success(f"✅ Payment verified: {analysis.file_count} file(s) paid (${analysis.price:.2f} {analysis.currency}).")
 
-                # Retrieve in-memory files buffer
                 cached_files = st.session_state.get(f"job_files_{analysis_id}", {})
 
                 if analysis.status != "completed" or not analysis.report_filename or not os.path.exists(analysis.report_filename):
-                    with st.spinner(f"Analyzing {analysis.file_count} file(s) in memory & compiling Markdown/PDF reports..."):
+                    with st.spinner(f"⚒️ Forging analysis for {analysis.file_count} file(s) in memory & compiling reports..."):
                         generated_reports = []
                         primary_pdf = None
 
@@ -446,7 +636,7 @@ with tab_analyze:
                                 "metrics": metrics
                             })
 
-                        # Create ZIP bundle of all reports
+                        # Create ZIP bundle
                         zip_file = create_reports_zip(analysis_id, generated_reports)
                         update_analysis_status(
                             analysis_id=analysis_id,
@@ -462,10 +652,9 @@ with tab_analyze:
                         analysis = get_analysis(analysis_id)
 
                 # Present completed reports
-                st.subheader(f"🎉 Audit Complete — {analysis.file_count} File(s)")
+                st.subheader(f"🎉 Audit Complete — {analysis.file_count} File(s) Forged")
                 st.write(f"**Job ID:** `{analysis_id}` &nbsp;|&nbsp; **Total Charged:** `${analysis.price:.2f} {analysis.currency}`")
 
-                # Show ZIP download if multi-file
                 if analysis.zip_filename and os.path.exists(analysis.zip_filename):
                     with open(analysis.zip_filename, "rb") as zf:
                         st.download_button(
@@ -476,8 +665,7 @@ with tab_analyze:
                             key="btn_download_zip"
                         )
 
-                # Individual file download list
-                st.markdown("#### Individual File Reports")
+                st.markdown("#### Forged Technical Reports")
                 for r in os.listdir(REPORTS_DIR):
                     if analysis_id[:8] in r and r.endswith(".pdf"):
                         pdf_path = os.path.join(REPORTS_DIR, r)
@@ -491,158 +679,222 @@ with tab_analyze:
                                     st.download_button("Markdown", mf.read(), file_name=os.path.basename(md_path), mime="text/markdown", key=f"dl_md_{r}")
                         with col_r3:
                             with open(pdf_path, "rb") as pf:
-                                st.download_button("PDF", pf.read(), file_name=os.path.basename(pdf_path), mime="application/pdf", key=f"dl_pdf_{r}")
+                                st.download_button("PDF Report", pf.read(), file_name=os.path.basename(pdf_path), mime="application/pdf", key=f"dl_pdf_{r}")
 
-                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("<hr class='gold-divider'>", unsafe_allow_html=True)
         else:
             st.error(f"Payment verification issue: {verification.get('error', 'Unable to verify checkout session.')}")
 
-    # File & Folder (ZIP) Upload ONLY
-    uploaded_items = st.file_uploader(
-        "Upload your source file or project folder (.zip)",
-        type=["py", "sql", "dax", "js", "ts", "jsx", "tsx", "cpp", "c", "h", "hpp", "json", "txt", "zip"],
-        accept_multiple_files=True,
-        help="Supported formats: PY, SQL, DAX, JS, TS, CPP, TXT, JSON, and ZIP project archives."
-    )
+    # --- TWO-COLUMN HERO LAYOUT ---
+    col_pitch, col_upload = st.columns([1.1, 1.0], gap="large")
 
-    analyzable_files = {}
-    ignored_files = []
+    with col_pitch:
+        st.markdown('<div class="hero-pitch-title">Precision Craftsmanship Applied to Code Audits</div>', unsafe_allow_html=True)
+        st.markdown('<div class="hero-pitch-subtitle">Submit raw source code or legacy projects. Receive rigorous security evaluations, architectural insights, and certified PDF documentation.</div>', unsafe_allow_html=True)
+        
+        st.markdown(f'<div class="price-pill">💳 <b>{unit_price_display} per file</b> &nbsp;•&nbsp; No subscription. No account needed.</div>', unsafe_allow_html=True)
 
-    if uploaded_items:
-        for item in uploaded_items:
-            if item.name.lower().endswith(".zip"):
-                try:
-                    with zipfile.ZipFile(io.BytesIO(item.getvalue())) as zf:
-                        for zip_info in zf.infolist():
-                            if zip_info.is_dir():
-                                continue
-                            fname = zip_info.filename
-                            if CodeAnalyzer.is_analyzable_file(fname):
-                                try:
-                                    content = zf.read(zip_info).decode("utf-8", errors="ignore")
-                                    if content.strip():
-                                        analyzable_files[fname] = content
-                                    else:
-                                        ignored_files.append(f"{fname} (empty)")
-                                except Exception:
-                                    ignored_files.append(fname)
-                            else:
-                                ignored_files.append(fname)
-                except Exception as e:
-                    st.error(f"Error reading ZIP file '{item.name}': {e}")
-            else:
-                if CodeAnalyzer.is_analyzable_file(item.name):
-                    content = item.getvalue().decode("utf-8", errors="ignore")
-                    if content.strip():
-                        analyzable_files[item.name] = content
-                    else:
-                        ignored_files.append(f"{item.name} (empty)")
-                else:
-                    ignored_files.append(item.name)
-
-    # Privacy Guarantee Line
-    st.markdown('<div class="privacy-notice">🔒 <b>Private by design</b> — source code isn\'t retained after analysis.</div>', unsafe_allow_html=True)
-
-    # Pre-Payment Scan & Calculation Box
-    billable_count = len(analyzable_files)
-
-    if billable_count > 0:
-        total_price = round(billable_count * unit_price, 2)
-        total_price_formatted = f"${total_price:.2f} {currency}"
-
-        st.markdown(f"""
-        <div class="scan-box">
-            <div class="scan-header">📁 Project Scan Complete</div>
-            <div class="scan-summary">
-                <b>{billable_count + len(ignored_files)}</b> files found &nbsp;•&nbsp; 
-                <span style="color:#10B981; font-weight:600;">{billable_count} billable file{'s' if billable_count > 1 else ''}</span> &nbsp;•&nbsp; 
-                <span style="color:#6B7280;">{len(ignored_files)} ignored</span>
+        # Code Fluency Showcase (Before & After)
+        st.markdown("""
+        <div class="code-fluency-container">
+            <div class="code-fluency-header">
+                <span>⚡ Live Audit Inspection</span>
+                <span>Ast Parser & Security Rule</span>
             </div>
-            <div class="price-calculation">
-                {billable_count} file{'s' if billable_count > 1 else ''} × {unit_price_display} = {total_price_formatted}
+            <div class="code-fluency-body">
+                <span style="color:#7E57C2;">def</span> <span style="color:#42A5F5;">process_payment</span>(account_id, amount):<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#78909C;"># Raw concatenation flaw</span><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;query = <span style="color:#FFB74D;">"SELECT * FROM ledger WHERE id="</span> + <span class="code-highlight-flaw">account_id</span><br>
+                &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#7E57C2;">return</span> db.execute(query)
+            </div>
+            <div class="code-fluency-result">
+                <span><span class="sev-tag sev-high">HIGH</span> <b>SQL Injection Flaw</b></span>
+                <span style="color:#D8A246; font-weight:700;">Hallmark Score: 80 / B</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        with st.expander(f"View billable file list ({billable_count} files)", expanded=True):
-            for f in analyzable_files.keys():
-                st.markdown(f"✓ `{f}`")
-            if ignored_files:
-                st.caption(f"Ignored non-source files ({len(ignored_files)}): {', '.join(list(ignored_files)[:10])}{'...' if len(ignored_files) > 10 else ''}")
+    with col_upload:
+        st.markdown("""
+        <div class="upload-forge-card">
+            <div class="upload-icon">⚒️</div>
+            <div class="upload-title">Drop Source Files or Project ZIP</div>
+            <div class="upload-sub">Drag & drop files or project archive for instant analysis</div>
+            <div class="supported-badges">
+                <span class="badge-tag">.PY</span>
+                <span class="badge-tag">.SQL</span>
+                <span class="badge-tag">.DAX</span>
+                <span class="badge-tag">.JS/.TS</span>
+                <span class="badge-tag">.CPP</span>
+                <span class="badge-tag">.JSON</span>
+                <span class="badge-tag">.ZIP</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        # Single Primary Action Button
-        btn_label = f"Analyze {billable_count} File{'s' if billable_count > 1 else ''} — {total_price_formatted}"
-        if st.button(btn_label, type="primary", key="btn_pay_job"):
-            analysis_rec = create_analysis_record(
-                user_id=None,
-                org_id=None,
-                file_count=billable_count,
-                filenames=list(analyzable_files.keys())
-            )
-            st.session_state[f"job_files_{analysis_rec.id}"] = analyzable_files
+        uploaded_items = st.file_uploader(
+            "Upload files or project folder (.zip)",
+            type=["py", "sql", "dax", "js", "ts", "jsx", "tsx", "cpp", "c", "h", "hpp", "json", "txt", "zip"],
+            accept_multiple_files=True,
+            label_visibility="collapsed",
+            help="Upload single files, multiple files, or a .zip archive of a folder."
+        )
 
-            app_base_url = os.getenv("APP_URL", "http://localhost:8501")
-            checkout_info = create_guest_checkout_session(
-                analysis_id=analysis_rec.id,
-                success_url=app_base_url,
-                cancel_url=app_base_url
-            )
+        analyzable_files = {}
+        ignored_files = []
 
-            if checkout_info.get("mock"):
-                st.query_params["session_id"] = checkout_info["id"]
-                st.rerun()
-            else:
-                st.link_button(
-                    f"👉 Proceed to Stripe Checkout ({total_price_formatted})",
-                    url=checkout_info["url"],
-                    type="primary"
+        if uploaded_items:
+            for item in uploaded_items:
+                if item.name.lower().endswith(".zip"):
+                    try:
+                        with zipfile.ZipFile(io.BytesIO(item.getvalue())) as zf:
+                            for zip_info in zf.infolist():
+                                if zip_info.is_dir():
+                                    continue
+                                fname = zip_info.filename
+                                if CodeAnalyzer.is_analyzable_file(fname):
+                                    try:
+                                        content = zf.read(zip_info).decode("utf-8", errors="ignore")
+                                        if content.strip():
+                                            analyzable_files[fname] = content
+                                        else:
+                                            ignored_files.append(f"{fname} (empty)")
+                                    except Exception:
+                                        ignored_files.append(fname)
+                                else:
+                                    ignored_files.append(fname)
+                    except Exception as e:
+                        st.error(f"Error reading ZIP file '{item.name}': {e}")
+                else:
+                    if CodeAnalyzer.is_analyzable_file(item.name):
+                        content = item.getvalue().decode("utf-8", errors="ignore")
+                        if content.strip():
+                            analyzable_files[item.name] = content
+                        else:
+                            ignored_files.append(f"{item.name} (empty)")
+                    else:
+                        ignored_files.append(item.name)
+
+        billable_count = len(analyzable_files)
+
+        if billable_count > 0:
+            total_price = round(billable_count * unit_price, 2)
+            total_price_formatted = f"${total_price:.2f} {currency}"
+
+            st.markdown(f"""
+            <div class="scan-summary-card">
+                <div class="scan-summary-header">
+                    <span>⚡ Project Scan Complete</span>
+                </div>
+                <p style="margin:4px 0 0 0; color:#5C4A50; font-size:0.9rem;">
+                    <b>{billable_count + len(ignored_files)}</b> files inspected &nbsp;•&nbsp; 
+                    <span style="color:#10B981; font-weight:700;">{billable_count} billable</span> &nbsp;•&nbsp; 
+                    <span style="color:#6B7280;">{len(ignored_files)} ignored</span>
+                </p>
+                <div class="forge-price-callout">
+                    {billable_count} file{'s' if billable_count > 1 else ''} × {unit_price_display} = {total_price_formatted}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            with st.expander(f"Inspected billable file list ({billable_count} files)", expanded=False):
+                for f in analyzable_files.keys():
+                    st.markdown(f"✓ `{f}`")
+                if ignored_files:
+                    st.caption(f"Ignored non-source assets ({len(ignored_files)}): {', '.join(list(ignored_files)[:8])}...")
+
+            # High-Impact Ember CTA Button
+            btn_label = f"🔥 Forge Audit for {billable_count} File{'s' if billable_count > 1 else ''} — {total_price_formatted}"
+            if st.button(btn_label, type="primary", key="btn_pay_job"):
+                analysis_rec = create_analysis_record(
+                    user_id=None,
+                    org_id=None,
+                    file_count=billable_count,
+                    filenames=list(analyzable_files.keys())
+                )
+                st.session_state[f"job_files_{analysis_rec.id}"] = analyzable_files
+
+                app_base_url = os.getenv("APP_URL", "http://localhost:8501")
+                checkout_info = create_guest_checkout_session(
+                    analysis_id=analysis_rec.id,
+                    success_url=app_base_url,
+                    cancel_url=app_base_url
                 )
 
-    else:
-        st.button(f"Analyze — {unit_price_display} per file", disabled=True, key="btn_disabled_analyze")
+                if checkout_info.get("mock"):
+                    st.query_params["session_id"] = checkout_info["id"]
+                    st.rerun()
+                else:
+                    st.link_button(
+                        f"👉 Proceed to Stripe Checkout ({total_price_formatted})",
+                        url=checkout_info["url"],
+                        type="primary"
+                    )
+
+        else:
+            st.button(f"⚒️ Forge Audit — {unit_price_display} per file", disabled=True, key="btn_disabled_analyze")
+
+        st.markdown('<div class="privacy-notice">🔒 <b>Private by design</b> — source code is evaluated in-memory and never stored.</div>', unsafe_allow_html=True)
 
 
 # ==============================================================================
-# 2. EXAMPLE PREVIEW (WHERE EXAMPLES & SAMPLE AUDITS LIVE)
+# 2. EXAMPLE PREVIEW (STRUCTURED PROOF OF VALUE)
 # ==============================================================================
 with tab_preview:
-    st.subheader("🧪 Example Preview & Sample Reports")
-    st.write("Explore how The Ram & Chisel extracts business logic, complexity, and generates 7-section canonical audits.")
+    st.subheader("⚡ Forge Report Preview & Sample Audits")
+    st.write("Examine the exact 7-section technical documentation report produced for legacy and modern files.")
 
-    selected_sample_name = st.selectbox(
-        "Choose an example credit union file:",
-        list(SAMPLE_FILES.keys()),
-        key="preview_sample_selector"
-    )
+    col_demo_select, col_demo_btn = st.columns([3, 1])
+    with col_demo_select:
+        selected_sample_name = st.selectbox(
+            "Choose a domain sample file:",
+            list(SAMPLE_FILES.keys()),
+            key="preview_sample_selector"
+        )
     sample_data = SAMPLE_FILES[selected_sample_name]
 
     st.info(f"**Target:** `{sample_data['filename']}` ({sample_data['language']}) — {sample_data['description']}")
 
-    with st.expander("👁️ View Sample Source Code", expanded=False):
+    with st.expander("👁️ View Sample Source Code (Raw Input)", expanded=False):
         st.code(sample_data["code"], language=sample_data["language"].lower())
 
-    if st.button("⚡ Generate Sample Report Preview", type="primary", key="btn_generate_preview"):
-        with st.spinner("Generating sample metrics & 7-section Markdown report..."):
+    with col_demo_btn:
+        st.write("")
+        st.write("")
+        run_preview = st.button("⚡ Generate Report", key="btn_generate_preview")
+
+    if run_preview:
+        with st.spinner("⚒️ Hammering metrics & forging 7-section report..."):
             metrics = CodeAnalyzer.analyze_source_code(
                 code_text=sample_data["code"],
                 filename=sample_data["filename"]
             )
 
-            # Executive Scorecard
-            m1, m2, m3, m4 = st.columns(4)
-            with m1:
-                st.metric("Quality Score", f"{metrics.get('quality_score', 100)} / 100")
-            with m2:
-                st.metric("Audit Grade", metrics.get('grade', 'A'))
-            with m3:
-                st.metric("Language", metrics.get('language', 'General'))
-            with m4:
-                st.metric("Total Lines", metrics.get('total_loc', 0))
+            # Prominent Hallmark / Wax Seal Badge Component
+            grade = metrics.get('grade', 'A')
+            score = metrics.get('quality_score', 100)
+            chip_class = "grade-chip-a" if score >= 80 else ("grade-chip-b" if score >= 70 else ("grade-chip-c" if score >= 60 else "grade-chip-f"))
 
-            st.markdown("---")
+            st.markdown(f"""
+            <div class="hallmark-container">
+                <div class="hallmark-stamp">
+                    <div class="hallmark-seal">⚒️</div>
+                    <div class="hallmark-details">
+                        <h3>{metrics.get('filename', sample_data['filename'])}</h3>
+                        <p>Language: <b>{metrics.get('language', 'General')}</b> &nbsp;|&nbsp; Volume: <b>{metrics.get('total_loc', 0)} LOC</b> &nbsp;|&nbsp; Complexity: <b>{metrics.get('complexity_score', 1.0)}</b></p>
+                    </div>
+                </div>
+                <div>
+                    <span class="grade-chip {chip_class}">Grade {grade} &nbsp;•&nbsp; {score}/100</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Clear Visual Card Boundary for Report Body
+            st.markdown('<div class="report-card">', unsafe_allow_html=True)
             st.markdown(metrics["markdown_report"])
+            st.markdown('</div>', unsafe_allow_html=True)
 
-            # Generate sample PDF
             sample_pdf_path = generate_analysis_pdf(
                 analysis_id="SAMPLE-DEMO",
                 analysis_metrics=metrics,
@@ -650,6 +902,7 @@ with tab_preview:
                 currency="USD"
             )
 
+            st.markdown("<br>", unsafe_allow_html=True)
             c_btn1, c_btn2 = st.columns(2)
             with c_btn1:
                 st.download_button(
@@ -663,7 +916,7 @@ with tab_preview:
                 if os.path.exists(sample_pdf_path):
                     with open(sample_pdf_path, "rb") as pf:
                         st.download_button(
-                            label="⬇️ Download Sample PDF (.pdf)",
+                            label="⬇️ Download PDF Report (.pdf)",
                             data=pf.read(),
                             file_name=f"sample_{sample_data['filename']}.pdf",
                             mime="application/pdf",
@@ -675,21 +928,21 @@ with tab_preview:
 # 3. HOW IT WORKS
 # ==============================================================================
 with tab_how:
-    st.subheader("How The Ram & Chisel Works")
-    st.write("A direct, file-based analysis service that transforms legacy and modern source files into structured documentation.")
+    st.subheader("📖 The Forge Process")
+    st.write("Precision craftsmanship applied to code auditing in three transparent steps.")
 
     st.markdown(f"""
     <div class="info-card">
-        <h4>1. Upload File or Project Folder</h4>
-        <p>Submit single source files or a project folder. Our scanner automatically identifies supported files and ignores irrelevant assets.</p>
+        <h4>1. 📁 Upload Source Code or Project Repository</h4>
+        <p>Submit single source files or a .ZIP project repository. Our scanner identifies supported files (.py, .sql, .dax, .js, .ts, .cpp, .json) and ignores irrelevant build assets.</p>
     </div>
     <div class="info-card">
-        <h4>2. Simple File-Based Pricing ({unit_price_display}/file)</h4>
-        <p>You only pay for analyzable source files ({unit_price_display} per file). Complete one single Stripe payment for the entire batch.</p>
+        <h4>2. 💳 One Simple File-Based Rate ({unit_price_display}/file)</h4>
+        <p>You only pay for analyzable source files ({unit_price_display} per file). Complete one single Stripe payment for the entire batch with zero subscription lock-in.</p>
     </div>
     <div class="info-card">
-        <h4>3. Receive Markdown & PDF Reports</h4>
-        <p>Every analyzed file receives its own 7-section canonical Markdown document and rendered PDF report. Multi-file uploads include a complete ZIP archive.</p>
+        <h4>3. 📜 Certified Markdown & PDF Technical Reports</h4>
+        <p>Every analyzed file receives its own 7-section canonical Markdown documentation and rendered PDF report. Multi-file uploads include a complete ZIP bundle.</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -698,27 +951,27 @@ with tab_how:
 # 4. SECURITY & PRIVACY
 # ==============================================================================
 with tab_security:
-    st.subheader("Security & Privacy")
+    st.subheader("🛡️ Security, Privacy & Integrity")
     st.write("The Ram & Chisel is built for organizations where code confidentiality and data integrity are essential.")
 
     st.markdown("""
     <div class="info-card">
-        <h4>Private by Design — Zero Code Retention</h4>
+        <h4>🚫 Private by Design — Zero Code Retention</h4>
         <p>Source code is processed strictly in temporary working memory (RAM) during analysis and is discarded immediately after report generation. We do not store your source code in persistent databases or long-term storage.</p>
     </div>
 
     <div class="info-card">
-        <h4>No AI Model Training</h4>
+        <h4>🧠 No AI Model Training</h4>
         <p>Your code, algorithms, and business logic are never used to train, tune, or improve machine learning models. Your intellectual property remains strictly your own.</p>
     </div>
 
     <div class="info-card">
-        <h4>Secure Payment Processing</h4>
+        <h4>💳 Secure Payment Processing</h4>
         <p>Payments are handled securely by Stripe. We never receive, process, or store raw credit card numbers or sensitive payment credentials on our servers.</p>
     </div>
 
     <div class="info-card">
-        <h4>Minimal Transaction Metadata</h4>
+        <h4>📋 Minimal Transaction Metadata</h4>
         <p>Our database retains only non-sensitive transactional records (transaction timestamp, analysis job identifier, price paid, and fulfillment status) for customer receipt and accounting verification.</p>
     </div>
     """, unsafe_allow_html=True)
@@ -820,7 +1073,7 @@ with tab_signin:
                 st.session_state.auth_user = None
                 st.rerun()
 
-        st.markdown("---")
+        st.markdown("<hr class='gold-divider'>", unsafe_allow_html=True)
 
         # Admin Centralized Pricing Controls
         if is_superadmin or user.get("role") == "admin":
@@ -842,7 +1095,7 @@ with tab_signin:
 
         # Organization Team Portal Features
         if user.get("organization_id"):
-            st.markdown("---")
+            st.markdown("<hr class='gold-divider'>", unsafe_allow_html=True)
             st.subheader("Submit Code for Team Audit")
             org_file = st.file_uploader("Upload team source file:", type=["py", "sql", "dax", "js", "ts", "cpp", "txt", "json"], key="org_file_upload")
 
@@ -850,7 +1103,7 @@ with tab_signin:
                 file_content = org_file.getvalue().decode("utf-8", errors="ignore")
                 if st.button(f"Run Team Audit ({unit_price_display})", type="primary", key="btn_team_audit"):
                     analysis_rec = create_analysis_record(user_id=user["id"], org_id=user["organization_id"], file_count=1, filenames=[org_file.name])
-                    with st.spinner("Processing analysis..."):
+                    with st.spinner("⚒️ Processing team analysis..."):
                         charge_res = charge_organization_analysis(org_id=user["organization_id"], analysis_id=analysis_rec.id)
                         if charge_res.get("success"):
                             metrics = CodeAnalyzer.analyze_source_code(file_content, filename=org_file.name)
@@ -862,7 +1115,7 @@ with tab_signin:
                         else:
                             st.error(f"Payment failed: {charge_res.get('error', 'Card error')}")
 
-            st.markdown("---")
+            st.markdown("<hr class='gold-divider'>", unsafe_allow_html=True)
             st.subheader("Organization Usage")
             usage = get_org_usage(user["organization_id"])
             u1, u2, u3 = st.columns(3)
@@ -874,7 +1127,7 @@ with tab_signin:
                 st.metric("Total Billed", f"${usage['total_usage_amount']:.2f} {usage['currency']}")
 
             if user.get("role") == "admin":
-                st.markdown("---")
+                st.markdown("<hr class='gold-divider'>", unsafe_allow_html=True)
                 st.subheader("Team Members")
                 with st.form("form_add_member"):
                     new_email = st.text_input("Member Email")
