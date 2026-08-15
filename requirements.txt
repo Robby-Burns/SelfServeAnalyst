@@ -16,3 +16,4 @@ stripe
 reportlab
 bcrypt
 radon
+psycopg2-binary
