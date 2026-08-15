@@ -38,7 +38,7 @@ from stripe_service import (
 from code_analyzer import CodeAnalyzer, SUPPORTED_EXTENSIONS, IGNORED_PATTERNS
 from pdf_generator import generate_analysis_pdf, create_reports_zip, REPORTS_DIR
 
-# Initialize Database Schema & Authoritative Pricing ($15.00 default)
+# Initialize Database Schema & Authoritative Pricing ($5.00 default)
 init_db()
 
 # Page Setup - Wide layout
@@ -559,7 +559,7 @@ st.markdown('<div class="gold-divider"></div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
 
-# --- DYNAMIC PRICING RETRIEVAL ($15.00) ---
+# --- DYNAMIC PRICING RETRIEVAL ($5.00) ---
 unit_price, currency = get_pricing()
 unit_price_display = f"${unit_price:.2f} {currency}" if currency != "USD" else f"${unit_price:.0f}" if unit_price.is_integer() else f"${unit_price:.2f}"
 
