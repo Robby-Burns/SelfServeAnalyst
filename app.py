@@ -1,6 +1,7 @@
 import os
 import io
 import sys
+import base64
 import zipfile
 import tempfile
 import streamlit as st
@@ -458,17 +459,22 @@ RETURN
 }
 
 
-# --- PROMINENT LOGO IN TOP HEADER ---
+# --- PROMINENT LOGO & BRAND HEADER (PERFECTLY CENTERED) ---
 logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo.png")
-col_logo_l, col_logo_c, col_logo_r = st.columns([5, 2, 5])
-with col_logo_c:
-    if os.path.exists(logo_path):
-        st.image(logo_path, width=115)
+logo_img_tag = ""
+if os.path.exists(logo_path):
+    try:
+        with open(logo_path, "rb") as f:
+            b64_logo = base64.b64encode(f.read()).decode("utf-8")
+            logo_img_tag = f'<img src="data:image/png;base64,{b64_logo}" style="width: 115px; margin: 0 auto 8px auto; display: block;">'
+    except Exception:
+        pass
 
-st.markdown("""
-<div style="text-align: center; margin-bottom: 1.2rem;">
-<div style="font-family: 'Cinzel', serif; font-size: 2.1rem; font-weight: 900; letter-spacing: 0.08em; color: #3D1220; line-height: 1.1; margin-top: 6px;">THE RAM & CHISEL</div>
-<div style="font-size: 0.85rem; font-weight: 700; color: #C9A24B; text-transform: uppercase; letter-spacing: 0.16em; margin-top: 4px;">Precision Code Quality, Security & Documentation Audit</div>
+st.markdown(f"""
+<div style="text-align: center; margin: 0 auto 1.4rem auto; width: 100%;">
+{logo_img_tag}
+<div style="font-family: 'Cinzel', serif; font-size: 2.2rem; font-weight: 900; letter-spacing: 0.08em; color: #3D1220; line-height: 1.1; margin-top: 4px; text-align: center;">THE RAM & CHISEL</div>
+<div style="font-size: 0.88rem; font-weight: 700; color: #C9A24B; text-transform: uppercase; letter-spacing: 0.16em; margin-top: 4px; text-align: center;">Precision Code Quality, Security &amp; Documentation Audit</div>
 <hr style="height: 2px; background: linear-gradient(90deg, transparent 0%, #C9A24B 35%, #C9A24B 65%, transparent 100%); margin: 14px auto 20px auto; width: 85%; border: none;">
 </div>
 """, unsafe_allow_html=True)
