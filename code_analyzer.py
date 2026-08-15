@@ -262,12 +262,12 @@ class CodeAnalyzer:
         total_loc = metrics.get("total_loc", 0)
         code_loc = metrics.get("code_loc", 0)
         complexity = metrics.get("complexity_score", 1.0)
-        quality_score = metrics.get("quality_score", 100)
-        grade = metrics.get("grade", "A")
+        confidence_score = quality_score
+        confidence_tier = "High Confidence" if confidence_score >= 80 else ("Moderate Confidence" if confidence_score >= 60 else "Review Required")
 
         md = []
         md.append(f"# Documentation Report for\n`{filename}`\n")
-        md.append(f"**Score:** {quality_score}/100 &nbsp;|&nbsp; **Grade:** {grade} &nbsp;|&nbsp; **Language:** {lang}\n")
+        md.append(f"**Accuracy Confidence Score:** {confidence_score}% ({confidence_tier}) &nbsp;|&nbsp; **Language:** {lang}\n")
 
         # 1. Overview
         md.append("## 1. Overview\n")

@@ -187,20 +187,20 @@ def generate_analysis_pdf(
     story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_GOLD, spaceAfter=10))
 
     # 2. Scorecard Box
-    grade = analysis_metrics.get("grade", "A")
-    score = analysis_metrics.get("quality_score", 100)
-    score_color = "#10B981" if score >= 80 else ("#D8A246" if score >= 60 else "#B91C1C")
+    conf_score = analysis_metrics.get("quality_score", 100)
+    conf_tier = "High Confidence" if conf_score >= 80 else ("Moderate Confidence" if conf_score >= 60 else "Review Required")
+    score_color = "#10B981" if conf_score >= 80 else ("#D8A246" if conf_score >= 60 else "#B91C1C")
 
     scorecard_data = [
         [
-            Paragraph("<b>Overall Quality Score</b>", subtitle_style),
-            Paragraph("<b>Audit Grade</b>", subtitle_style),
+            Paragraph("<b>Accuracy Confidence Score</b>", subtitle_style),
+            Paragraph("<b>Confidence Tier</b>", subtitle_style),
             Paragraph("<b>Language Dialect</b>", subtitle_style),
             Paragraph("<b>Total LOC</b>", subtitle_style)
         ],
         [
-            Paragraph(f"<font size=16 color='{score_color}'><b>{score} / 100</b></font>", body_style),
-            Paragraph(f"<font size=16 color='{score_color}'><b>Grade {grade}</b></font>", body_style),
+            Paragraph(f"<font size=16 color='{score_color}'><b>{conf_score}%</b></font>", body_style),
+            Paragraph(f"<font size=16 color='{score_color}'><b>{conf_tier}</b></font>", body_style),
             Paragraph(f"<b>{analysis_metrics.get('language', 'General')}</b>", body_style),
             Paragraph(f"<b>{analysis_metrics.get('total_loc', 0)} lines</b>", body_style)
         ]
