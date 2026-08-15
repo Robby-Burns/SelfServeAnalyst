@@ -113,7 +113,12 @@ def init_db(db_uri=None):
     if db_uri.startswith("postgres://"):
         db_uri = db_uri.replace("postgres://", "postgresql://", 1)
 
-    _engine = create_engine(db_uri, echo=False)
+    engine_kwargs = {"echo": False}
+    if db_uri.startswith("postgresql"):
+        engine_kwargs["pool_pre_ping"] = True
+        engine_kwargs["pool_recycle"] = 300
+
+    _engine = create_engine(db_uri, **engine_kwargs)
     Base.metadata.create_all(_engine)
     _SessionFactory = scoped_session(sessionmaker(bind=_engine))
 
