@@ -145,13 +145,16 @@ def init_db(db_uri=None):
     Base.metadata.create_all(_engine)
     _SessionFactory = scoped_session(sessionmaker(bind=_engine))
 
-    # Ensure default pricing config exists (5.00 USD)
+    # Ensure default pricing config exists ($5.00 USD)
     session = _SessionFactory()
     try:
         config = session.query(PricingConfig).first()
         if not config:
             config = PricingConfig(id=1, analysis_price=5.00, currency="USD")
             session.add(config)
+            session.commit()
+        elif config.analysis_price == 15.00:
+            config.analysis_price = 5.00
             session.commit()
     finally:
         session.close()
@@ -181,6 +184,9 @@ def get_pricing():
         if not config:
             config = PricingConfig(id=1, analysis_price=5.00, currency="USD")
             session.add(config)
+            session.commit()
+        elif config.analysis_price == 15.00:
+            config.analysis_price = 5.00
             session.commit()
         return float(config.analysis_price), str(config.currency)
     finally:

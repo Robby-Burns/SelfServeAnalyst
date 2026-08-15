@@ -1,6 +1,7 @@
 import os
 import io
 import sys
+import base64
 import zipfile
 import tempfile
 import streamlit as st
@@ -546,17 +547,28 @@ RETURN
 }
 
 
+# --- BASE64 LOGO HELPER FOR GUARANTEED HEADER DISPLAY ---
+def get_logo_html():
+    logo_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo.png")
+    if os.path.exists(logo_file):
+        try:
+            with open(logo_file, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("utf-8")
+                return f'<img src="data:image/png;base64,{b64}" width="120" style="display: block; margin: 0 auto 8px auto; max-width: 120px;">'
+        except Exception:
+            pass
+    return ""
+
+
 # --- PROMINENT LOGO IN TOP HEADER ---
-logo_path = "logo.png"
-st.markdown('<div class="brand-top-container">', unsafe_allow_html=True)
-col_h1, col_h2, col_h3 = st.columns([5, 2, 5])
-with col_h2:
-    if os.path.exists(logo_path):
-        st.image(logo_path, width=105)
-st.markdown('<div class="brand-logo-text">THE RAM & CHISEL</div>', unsafe_allow_html=True)
-st.markdown('<div class="brand-tagline-text">Precision Code Quality, Security & Documentation Audit</div>', unsafe_allow_html=True)
-st.markdown('<div class="gold-divider"></div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+st.markdown(f"""
+<div class="brand-top-container">
+    {get_logo_html()}
+    <div class="brand-logo-text">THE RAM & CHISEL</div>
+    <div class="brand-tagline-text">Precision Code Quality, Security & Documentation Audit</div>
+    <div class="gold-divider"></div>
+</div>
+""", unsafe_allow_html=True)
 
 
 # --- DYNAMIC PRICING RETRIEVAL ($5.00) ---
@@ -689,23 +701,14 @@ with tab_analyze:
         
         st.markdown(f'<div class="price-pill"><b>{unit_price_display} per analyzed file</b> &nbsp;•&nbsp; No subscription. No account needed.</div>', unsafe_allow_html=True)
 
-        # Code Inspection Panel (Before & After)
         st.markdown("""
-        <div class="code-fluency-container">
-            <div class="code-fluency-header">
-                <span>Live Audit Inspection</span>
-                <span>Ast Parser & Security Rule</span>
-            </div>
-            <div class="code-fluency-body">
-                <span style="color:#7E57C2;">def</span> <span style="color:#42A5F5;">process_payment</span>(account_id, amount):<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#78909C;"># Raw concatenation flaw</span><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;query = <span style="color:#FFB74D;">"SELECT * FROM ledger WHERE id="</span> + <span class="code-highlight-flaw">account_id</span><br>
-                &nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#7E57C2;">return</span> db.execute(query)
-            </div>
-            <div class="code-fluency-result">
-                <span><span class="sev-tag sev-high">HIGH</span> <b>SQL Injection Flaw</b></span>
-                <span style="color:#D8A246; font-weight:700;">Accuracy Confidence: 98% (High Confidence)</span>
-            </div>
+        <div class="info-card" style="margin-top: 0.5rem;">
+            <h4>Automated Static Inspection</h4>
+            <p>Evaluates AST structure, cyclomatic complexity, unparameterized queries, and dangerous execution patterns in memory.</p>
+        </div>
+        <div class="info-card">
+            <h4>7-Section Canonical Documentation</h4>
+            <p>Every file receives a complete overview, business logic breakdown, input/output analysis, dependencies, and actionable recommendations.</p>
         </div>
         """, unsafe_allow_html=True)
 
