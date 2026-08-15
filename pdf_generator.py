@@ -3,6 +3,9 @@ import io
 from datetime import datetime
 from typing import Dict, Any
 
+REPORTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
+os.makedirs(REPORTS_DIR, exist_ok=True)
+
 try:
     from reportlab.lib.pagesizes import letter
     from reportlab.lib import colors
