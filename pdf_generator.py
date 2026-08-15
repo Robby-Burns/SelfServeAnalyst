@@ -1,7 +1,8 @@
 import os
 import io
+import zipfile
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 REPORTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reports")
 os.makedirs(REPORTS_DIR, exist_ok=True)
@@ -92,11 +93,12 @@ def generate_analysis_pdf(
     output_filename: str = None
 ) -> str:
     """
-    Generates a professional code analysis report in PDF format branded with The Ram & Chisel.
-    Returns the relative path to the generated PDF file.
+    Generates a professional code analysis report in PDF format matching the canonical 7-section design.
+    Returns the relative/absolute path to the generated PDF file.
     """
     if not output_filename:
-        output_filename = os.path.join(REPORTS_DIR, f"ram_chisel_report_{analysis_id[:8]}.pdf")
+        filename_clean = re_sanitize(analysis_metrics.get("filename", "report"))
+        output_filename = os.path.join(REPORTS_DIR, f"{filename_clean}_{analysis_id[:8]}.pdf")
 
     if not REPORTLAB_AVAILABLE:
         return _generate_fallback_pdf(analysis_id, analysis_metrics, price_charged, currency, output_filename)
@@ -104,10 +106,10 @@ def generate_analysis_pdf(
     doc = SimpleDocTemplate(
         output_filename,
         pagesize=letter,
-        rightMargin=40,
-        leftMargin=40,
-        topMargin=40,
-        bottomMargin=40
+        rightMargin=36,
+        leftMargin=36,
+        topMargin=36,
+        bottomMargin=36
     )
 
     styles = getSampleStyleSheet()
@@ -115,35 +117,35 @@ def generate_analysis_pdf(
     title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Heading1'],
-        fontSize=20,
-        leading=24,
+        fontSize=18,
+        leading=22,
         textColor=COLOR_BURGUNDY,
-        spaceAfter=4
+        spaceAfter=2
     )
 
     subtitle_style = ParagraphStyle(
         'DocSubTitle',
         parent=styles['Normal'],
-        fontSize=9.5,
-        leading=13,
+        fontSize=9,
+        leading=12,
         textColor=colors.HexColor('#5E4950')
     )
 
     section_heading = ParagraphStyle(
         'SectionHeading',
         parent=styles['Heading2'],
-        fontSize=12,
-        leading=16,
+        fontSize=11,
+        leading=15,
         textColor=COLOR_BURGUNDY,
-        spaceBefore=10,
-        spaceAfter=5
+        spaceBefore=8,
+        spaceAfter=4
     )
 
     body_style = ParagraphStyle(
         'BodyDark',
         parent=styles['Normal'],
         fontSize=8.5,
-        leading=12,
+        leading=11.5,
         textColor=COLOR_DARK_TEXT
     )
 
@@ -154,18 +156,18 @@ def generate_analysis_pdf(
     if os.path.exists(logo_path):
         header_table_data = [
             [
-                ReportLabImage(logo_path, width=48, height=54),
+                ReportLabImage(logo_path, width=44, height=50),
                 [
                     Paragraph("<b>THE RAM & CHISEL</b>", title_style),
-                    Paragraph("<b>Precision Code Quality & Security Audit</b>", subtitle_style),
+                    Paragraph("<b>Precision Code Quality, Security & Documentation Audit</b>", subtitle_style),
                     Paragraph(
-                        f"<b>Analysis ID:</b> {analysis_id} &nbsp;|&nbsp; <b>Date:</b> {datetime.utcnow().strftime('%B %d, %Y - %H:%M UTC')} &nbsp;|&nbsp; <b>Price:</b> ${price_charged:.2f} {currency}",
+                        f"<b>Target:</b> {analysis_metrics.get('filename', 'Source Code')} &nbsp;|&nbsp; <b>ID:</b> {analysis_id} &nbsp;|&nbsp; <b>Price:</b> ${price_charged:.2f} {currency}",
                         subtitle_style
                     )
                 ]
             ]
         ]
-        header_table = Table(header_table_data, colWidths=[60, 470])
+        header_table = Table(header_table_data, colWidths=[55, 485])
         header_table.setStyle(TableStyle([
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('LEFTPADDING', (0, 0), (-1, -1), 0),
@@ -181,118 +183,144 @@ def generate_analysis_pdf(
             subtitle_style
         ))
 
-    story.append(Spacer(1, 10))
-    story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_GOLD, spaceAfter=14))
+    story.append(Spacer(1, 8))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_GOLD, spaceAfter=10))
 
-    # 2. Executive Scorecard Box
+    # 2. Scorecard Box
     grade = analysis_metrics.get("grade", "A")
     score = analysis_metrics.get("quality_score", 100)
-
     score_color = "#10B981" if score >= 80 else ("#D8A246" if score >= 60 else "#B91C1C")
 
     scorecard_data = [
         [
             Paragraph("<b>Overall Quality Score</b>", subtitle_style),
             Paragraph("<b>Audit Grade</b>", subtitle_style),
-            Paragraph("<b>Analyzed Target</b>", subtitle_style)
+            Paragraph("<b>Language Dialect</b>", subtitle_style),
+            Paragraph("<b>Total LOC</b>", subtitle_style)
         ],
         [
-            Paragraph(f"<font size=18 color='{score_color}'><b>{score} / 100</b></font>", body_style),
-            Paragraph(f"<font size=18 color='{score_color}'><b>Grade {grade}</b></font>", body_style),
-            Paragraph(f"<b>{analysis_metrics.get('filename', 'Source Code')}</b>", body_style)
+            Paragraph(f"<font size=16 color='{score_color}'><b>{score} / 100</b></font>", body_style),
+            Paragraph(f"<font size=16 color='{score_color}'><b>Grade {grade}</b></font>", body_style),
+            Paragraph(f"<b>{analysis_metrics.get('language', 'General')}</b>", body_style),
+            Paragraph(f"<b>{analysis_metrics.get('total_loc', 0)} lines</b>", body_style)
         ]
     ]
 
-    scorecard_table = Table(scorecard_data, colWidths=[170, 170, 190])
+    scorecard_table = Table(scorecard_data, colWidths=[135, 135, 135, 135])
     scorecard_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), COLOR_LIGHT_BG),
         ('BOX', (0, 0), (-1, -1), 1, COLOR_BORDER_GOLD),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, COLOR_BORDER_GOLD),
-        ('TOPPADDING', (0, 0), (-1, -1), 7),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]))
     story.append(scorecard_table)
-    story.append(Spacer(1, 12))
+    story.append(Spacer(1, 8))
 
-    # 3. Volume & Structure Metrics
-    story.append(Paragraph("📊 Volume & Structure Metrics", section_heading))
-    metrics_data = [
-        ["Metric", "Value", "Metric", "Value"],
-        ["Total Lines of Code (LOC)", str(analysis_metrics.get("total_loc", 0)), "Functions / Methods", str(analysis_metrics.get("functions_count", 0))],
-        ["Executable Code Lines", str(analysis_metrics.get("code_loc", 0)), "Classes / Structs", str(analysis_metrics.get("classes_count", 0))],
-        ["Comment Lines", str(analysis_metrics.get("comment_lines", 0)), "Cyclomatic Complexity Score", str(analysis_metrics.get("complexity_score", 1.0))],
-        ["Blank Lines", str(analysis_metrics.get("blank_lines", 0)), "AST Verification", "Passed" if analysis_metrics.get("ast_parsed") else "Pattern Matched"]
-    ]
+    # 3. 7-Section Canonical Breakdown
+    # 1. Overview
+    story.append(Paragraph("1. Overview", section_heading))
+    overview_text = (
+        f"Source file <b>{analysis_metrics.get('filename', '')}</b> ({analysis_metrics.get('language', '')}) "
+        f"contains {analysis_metrics.get('total_loc', 0)} total lines ({analysis_metrics.get('code_loc', 0)} executable) "
+        f"with a cyclomatic complexity index of {analysis_metrics.get('complexity_score', 1.0)}."
+    )
+    story.append(Paragraph(overview_text, body_style))
+    story.append(Spacer(1, 6))
 
-    metrics_table = Table(metrics_data, colWidths=[170, 95, 170, 95])
-    metrics_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), COLOR_BURGUNDY),
-        ('TEXTCOLOR', (0, 0), (-1, 0), COLOR_GOLD),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('GRID', (0, 0), (-1, -1), 0.5, COLOR_BORDER_GOLD),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, COLOR_LIGHT_BG])
-    ]))
-    story.append(metrics_table)
-    story.append(Spacer(1, 12))
+    # 2. Business Logic
+    story.append(Paragraph("2. Business Logic", section_heading))
+    for bl in analysis_metrics.get("business_logic", []):
+        story.append(Paragraph(f"• {bl}", body_style))
+    story.append(Spacer(1, 6))
 
-    # 4. Security & Quality Findings
-    story.append(Paragraph("🔍 Security & Maintainability Findings", section_heading))
+    # 3. Inputs & 4. Outputs
+    story.append(Paragraph("3. Inputs & 4. Outputs", section_heading))
+    inputs = analysis_metrics.get("inputs", [])
+    outputs = analysis_metrics.get("outputs", [])
+    io_text = f"<b>Inputs detected:</b> {len(inputs)} &nbsp;|&nbsp; <b>Outputs/Returns:</b> {len(outputs)}"
+    story.append(Paragraph(io_text, body_style))
+    story.append(Spacer(1, 6))
+
+    # 5. Dependencies
+    story.append(Paragraph("5. Dependencies", section_heading))
+    deps = analysis_metrics.get("dependencies", [])
+    deps_str = ", ".join(deps) if deps else "None"
+    story.append(Paragraph(f"<b>External packages / engines:</b> {deps_str}", body_style))
+    story.append(Spacer(1, 6))
+
+    # 6. Data Relationships (SQL/DAX only)
+    if analysis_metrics.get("language") in ("SQL", "DAX"):
+        story.append(Paragraph("6. Data Relationships (SQL/DAX only)", section_heading))
+        tables = analysis_metrics.get("tables_referenced", [])
+        joins = analysis_metrics.get("joins", [])
+        rel_text = f"<b>Referenced Tables:</b> {', '.join(tables) if tables else 'None'}"
+        story.append(Paragraph(rel_text, body_style))
+        if joins:
+            for j in joins:
+                story.append(Paragraph(f"• <b>{j.get('join_type', 'JOIN')}</b> {j.get('table')} ON {j.get('condition')}", body_style))
+        story.append(Spacer(1, 6))
+
+    # 7. Best Practices Review & Security Findings
+    story.append(Paragraph("7. Best Practices & Security Review", section_heading))
+    bp = analysis_metrics.get("best_practices", {})
+    story.append(Paragraph(f"• <b>Readability:</b> {bp.get('readability', 'Standard')}", body_style))
+    story.append(Paragraph(f"• <b>Performance:</b> {bp.get('performance', 'Standard')}", body_style))
+    story.append(Paragraph(f"• <b>Error Handling:</b> {bp.get('error_handling', 'Standard')}", body_style))
+    story.append(Paragraph(f"• <b>Security Posture:</b> {bp.get('security', 'Standard')}", body_style))
+    story.append(Paragraph(f"• <b>Maintainability:</b> {bp.get('maintainability', 'Standard')}", body_style))
+
     findings = analysis_metrics.get("findings", [])
-
-    if not findings:
-        story.append(Paragraph("✅ <i>No critical security issues or anti-patterns detected in the submitted code.</i>", body_style))
-    else:
-        findings_data = [["Severity", "Category", "Finding Details"]]
+    if findings:
+        story.append(Spacer(1, 4))
         for f in findings:
-            sev = f.get("severity", "INFO")
-            sev_color = "#B91C1C" if sev == "HIGH" else ("#D97706" if sev == "MEDIUM" else "#2563EB")
-            findings_data.append([
-                Paragraph(f"<font color='{sev_color}'><b>{sev}</b></font>", body_style),
-                Paragraph(f.get("category", "General"), body_style),
-                Paragraph(f.get("message", ""), body_style)
-            ])
+            sev_color = "#B91C1C" if f.get("severity") == "HIGH" else "#D97706"
+            story.append(Paragraph(f"• <font color='{sev_color}'><b>[{f.get('severity')}] {f.get('category')}</b></font>: {f.get('message')}", body_style))
 
-        findings_table = Table(findings_data, colWidths=[65, 115, 350])
-        findings_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), COLOR_BURGUNDY),
-            ('TEXTCOLOR', (0, 0), (-1, 0), COLOR_GOLD),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-            ('TOPPADDING', (0, 0), (-1, -1), 5),
-            ('GRID', (0, 0), (-1, -1), 0.5, COLOR_BORDER_GOLD),
-            ('VALIGN', (0, 0), (-1, -1), 'TOP')
-        ]))
-        story.append(findings_table)
+    story.append(Spacer(1, 10))
 
-    story.append(Spacer(1, 16))
-
-    # 5. Privacy & Data Handling Guarantee
+    # Privacy Guarantee Footer
     privacy_box = [
         [
             Paragraph(
-                "🔒 <b>The Ram & Chisel Privacy Guarantee:</b> We do not permanently retain source code after processing. "
-                "Submitted source code is evaluated strictly in temporary working memory and purged upon report completion.",
+                "🔒 <b>The Ram & Chisel Privacy Guarantee:</b> Source code is processed strictly for analysis and is not permanently retained by the application.",
                 body_style
             )
         ]
     ]
-    privacy_table = Table(privacy_box, colWidths=[530])
+    privacy_table = Table(privacy_box, colWidths=[540])
     privacy_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), COLOR_LIGHT_BG),
         ('BOX', (0, 0), (-1, -1), 1, COLOR_BORDER_GOLD),
-        ('TOPPADDING', (0, 0), (-1, -1), 7),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 7),
-        ('LEFTPADDING', (0, 0), (-1, -1), 10),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 10)
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8)
     ]))
     story.append(KeepTogether(privacy_table))
 
-    # Build PDF
     doc.build(story)
     return output_filename
+
+
+def re_sanitize(name: str) -> str:
+    """Sanitizes filename for filesystem safety."""
+    return "".join(c if c.isalnum() or c in "._-" else "_" for c in name)
+
+
+def create_reports_zip(analysis_id: str, files_data: List[Dict[str, str]]) -> str:
+    """
+    Bundles all generated Markdown and PDF reports into a single ZIP archive.
+    files_data: list of dicts with {'filename': ..., 'md_path': ..., 'pdf_path': ...}
+    Returns path to created zip file.
+    """
+    zip_filename = os.path.join(REPORTS_DIR, f"ram_chisel_audit_{analysis_id[:8]}.zip")
+    with zipfile.ZipFile(zip_filename, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for f in files_data:
+            if f.get("md_path") and os.path.exists(f["md_path"]):
+                zipf.write(f["md_path"], arcname=os.path.basename(f["md_path"]))
+            if f.get("pdf_path") and os.path.exists(f["pdf_path"]):
+                zipf.write(f["pdf_path"], arcname=os.path.basename(f["pdf_path"]))
+    return zip_filename

@@ -37,7 +37,8 @@ def create_guest_checkout_session(
     if not analysis:
         raise ValueError(f"Analysis with ID {analysis_id} not found.")
 
-    price_in_cents = int(round(analysis.price * 100))
+    unit_price_cents = int(round(getattr(analysis, "unit_price", analysis.price) * 100))
+    file_count = int(getattr(analysis, "file_count", 1))
     currency = analysis.currency.lower()
 
     if not is_stripe_configured():
@@ -61,17 +62,18 @@ def create_guest_checkout_session(
                 "price_data": {
                     "currency": currency,
                     "product_data": {
-                        "name": "Code Analysis & PDF Report",
-                        "description": f"Comprehensive code quality, security, and complexity analysis (Analysis ID: {analysis_id})",
+                        "name": f"Code Quality & Security Audit ({file_count} file{'s' if file_count > 1 else ''})",
+                        "description": f"Comprehensive code analysis & PDF/Markdown reports ({analysis_id})",
                     },
-                    "unit_amount": price_in_cents,
+                    "unit_amount": unit_price_cents,
                 },
-                "quantity": 1,
+                "quantity": file_count,
             }
         ],
         mode="payment",
         metadata={
             "analysis_id": analysis_id,
+            "file_count": str(file_count),
             "type": "guest_analysis"
         },
         success_url=f"{success_url}?session_id={{CHECKOUT_SESSION_ID}}",

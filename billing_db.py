@@ -60,7 +60,7 @@ class User(Base):
 
 
 class Analysis(Base):
-    """Analysis ledger with price snapshotting."""
+    """Analysis Job / Batch record with price snapshotting."""
     __tablename__ = "analyses"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -70,18 +70,41 @@ class Analysis(Base):
     status = Column(String(50), nullable=False, default="pending_payment")
     # Valid statuses: 'pending_payment', 'paid', 'processing', 'completed', 'payment_failed', 'failed'
 
-    price = Column(Float, nullable=False)  # SNAPSHOT of price at purchase time
+    file_count = Column(Integer, nullable=False, default=1)
+    unit_price = Column(Float, nullable=False, default=15.00)  # Snapshot of unit price per file
+    price = Column(Float, nullable=False)  # TOTAL price (file_count * unit_price)
     currency = Column(String(10), nullable=False, default="USD")
 
     stripe_checkout_session_id = Column(String(255), nullable=True)
     stripe_payment_intent_id = Column(String(255), nullable=True)
     report_filename = Column(String(255), nullable=True)
+    zip_filename = Column(String(255), nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
 
     organization = relationship("Organization", back_populates="analyses")
     user = relationship("User", back_populates="analyses")
+    file_analyses = relationship("FileAnalysis", back_populates="analysis_job", cascade="all, delete-orphan")
+
+
+class FileAnalysis(Base):
+    """Individual file record within an Analysis Job."""
+    __tablename__ = "file_analyses"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    analysis_id = Column(String(36), ForeignKey("analyses.id"), nullable=False)
+    filename = Column(String(255), nullable=False)
+    price = Column(Float, nullable=False, default=15.00)  # Unit price snapshot
+    currency = Column(String(10), nullable=False, default="USD")
+    status = Column(String(50), nullable=False, default="pending")  # 'pending', 'completed', 'failed'
+    markdown_report = Column(String, nullable=True)
+    pdf_filename = Column(String(255), nullable=True)
+    quality_score = Column(Integer, nullable=True)
+    grade = Column(String(10), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    analysis_job = relationship("Analysis", back_populates="file_analyses")
 
 
 class ProcessedEvent(Base):
@@ -281,19 +304,43 @@ def get_org_users(org_id: str):
 
 # --- Analysis & Price Snapshotting Helpers ---
 
-def create_analysis_record(user_id: str = None, org_id: str = None) -> Analysis:
-    """Creates a new analysis record with a SNAPSHOT of the current authoritative price."""
-    current_price, current_currency = get_pricing()
+def create_analysis_record(
+    user_id: str = None,
+    org_id: str = None,
+    file_count: int = 1,
+    filenames: list = None
+) -> Analysis:
+    """Creates a new analysis job record with a SNAPSHOT of the current authoritative price per file."""
+    current_unit_price, current_currency = get_pricing()
+    count = max(1, int(file_count))
+    total_price = round(count * current_unit_price, 2)
+
     session = get_session()
     try:
         analysis = Analysis(
             user_id=user_id,
             organization_id=org_id,
             status="pending_payment",
-            price=current_price,  # Snapshot
+            file_count=count,
+            unit_price=current_unit_price,  # Snapshot unit price
+            price=total_price,              # Total charge
             currency=current_currency
         )
         session.add(analysis)
+        session.flush()
+
+        # Create individual FileAnalysis entries
+        if filenames:
+            for fname in filenames:
+                fa = FileAnalysis(
+                    analysis_id=analysis.id,
+                    filename=fname,
+                    price=current_unit_price,
+                    currency=current_currency,
+                    status="pending"
+                )
+                session.add(fa)
+
         session.commit()
         session.refresh(analysis)
         return analysis
@@ -309,12 +356,65 @@ def get_analysis(analysis_id: str):
         session.close()
 
 
+def get_analysis_files(analysis_id: str):
+    session = get_session()
+    try:
+        files = session.query(FileAnalysis).filter_by(analysis_id=analysis_id).all()
+        return [
+            {
+                "id": f.id,
+                "analysis_id": f.analysis_id,
+                "filename": f.filename,
+                "price": f.price,
+                "currency": f.currency,
+                "status": f.status,
+                "markdown_report": f.markdown_report,
+                "pdf_filename": f.pdf_filename,
+                "quality_score": f.quality_score,
+                "grade": f.grade,
+                "created_at": f.created_at
+            }
+            for f in files
+        ]
+    finally:
+        session.close()
+
+
+def update_file_analysis(
+    file_analysis_id: str,
+    status: str,
+    markdown_report: str = None,
+    pdf_filename: str = None,
+    quality_score: int = None,
+    grade: str = None
+):
+    session = get_session()
+    try:
+        fa = session.query(FileAnalysis).filter_by(id=file_analysis_id).first()
+        if fa:
+            fa.status = status
+            if markdown_report is not None:
+                fa.markdown_report = markdown_report
+            if pdf_filename is not None:
+                fa.pdf_filename = pdf_filename
+            if quality_score is not None:
+                fa.quality_score = quality_score
+            if grade is not None:
+                fa.grade = grade
+            session.commit()
+            return True
+        return False
+    finally:
+        session.close()
+
+
 def update_analysis_status(
     analysis_id: str,
     status: str,
     stripe_payment_intent_id: str = None,
     stripe_checkout_session_id: str = None,
-    report_filename: str = None
+    report_filename: str = None,
+    zip_filename: str = None
 ):
     session = get_session()
     try:
@@ -328,6 +428,8 @@ def update_analysis_status(
             analysis.stripe_checkout_session_id = stripe_checkout_session_id
         if report_filename:
             analysis.report_filename = report_filename
+        if zip_filename:
+            analysis.zip_filename = zip_filename
         if status == "completed":
             analysis.completed_at = datetime.utcnow()
         session.commit()

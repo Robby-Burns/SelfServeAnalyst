@@ -1,5 +1,7 @@
 import os
+import io
 import sys
+import zipfile
 import tempfile
 import streamlit as st
 import matplotlib
@@ -21,6 +23,8 @@ from billing_db import (
     get_org_users,
     create_analysis_record,
     get_analysis,
+    get_analysis_files,
+    update_file_analysis,
     update_analysis_status,
     get_org_usage
 )
@@ -31,13 +35,13 @@ from stripe_service import (
     setup_organization_billing_session,
     charge_organization_analysis
 )
-from code_analyzer import CodeAnalyzer
-from pdf_generator import generate_analysis_pdf, REPORTS_DIR
+from code_analyzer import CodeAnalyzer, SUPPORTED_EXTENSIONS, IGNORED_PATTERNS
+from pdf_generator import generate_analysis_pdf, create_reports_zip, REPORTS_DIR
 
 # Initialize Database Schema & Default Pricing
 init_db()
 
-# Page Setup - Centered for focus and elegance
+# Page Setup
 st.set_page_config(
     page_title="The Ram & Chisel — Code Quality & Security Audit",
     page_icon="🛡️",
@@ -70,24 +74,33 @@ st.markdown("""
     .brand-header {
         display: flex;
         align-items: center;
-        gap: 14px;
-        margin-bottom: 2rem;
+        gap: 16px;
+        margin-bottom: 1.5rem;
         padding-top: 0.5rem;
     }
 
     .brand-logo-text {
         font-family: 'Cinzel', serif;
-        font-size: 1.6rem;
+        font-size: 1.75rem;
         font-weight: 800;
         letter-spacing: 0.08em;
         color: var(--brand-burgundy);
         line-height: 1.1;
     }
 
+    .brand-tagline-text {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--brand-gold);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-top: 2px;
+    }
+
     /* Hero Section */
     .hero-container {
         text-align: center;
-        padding: 1.5rem 0 2rem 0;
+        padding: 1.2rem 0 1.8rem 0;
     }
 
     .hero-title {
@@ -96,39 +109,73 @@ st.markdown("""
         font-weight: 800;
         letter-spacing: 0.04em;
         color: var(--brand-burgundy);
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.4rem;
         line-height: 1.2;
     }
 
     .hero-subtitle {
-        font-size: 1.1rem;
+        font-size: 1.05rem;
         color: var(--text-muted);
-        margin-bottom: 1.4rem;
+        margin-bottom: 1.2rem;
         font-weight: 400;
     }
 
     .hero-price {
-        font-size: 1.6rem;
+        font-size: 1.55rem;
         font-weight: 700;
         color: var(--brand-burgundy);
         margin-bottom: 0.2rem;
     }
 
     .hero-price-sub {
-        font-size: 0.92rem;
+        font-size: 0.88rem;
         color: var(--brand-gold);
         font-weight: 600;
         letter-spacing: 0.04em;
-        margin-bottom: 1.8rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Scan Box */
+    .scan-box {
+        background-color: #FFFFFF;
+        border: 1.5px solid var(--brand-gold-border);
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin: 1rem 0;
+        box-shadow: 0 2px 8px rgba(74, 21, 37, 0.04);
+    }
+
+    .scan-header {
+        font-weight: 700;
+        color: var(--brand-burgundy);
+        font-size: 1.05rem;
+        margin-bottom: 6px;
+    }
+
+    .scan-summary {
+        font-size: 0.92rem;
+        color: var(--text-muted);
+        margin-bottom: 10px;
+    }
+
+    .price-calculation {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--brand-burgundy);
+        background: var(--brand-gold-light);
+        padding: 8px 14px;
+        border-radius: 6px;
+        border-left: 4px solid var(--brand-gold);
+        margin: 10px 0;
     }
 
     /* Privacy line */
     .privacy-notice {
         text-align: center;
         color: var(--text-muted);
-        font-size: 0.88rem;
-        margin-top: 1rem;
-        margin-bottom: 1.4rem;
+        font-size: 0.86rem;
+        margin-top: 0.8rem;
+        margin-bottom: 1.2rem;
     }
 
     /* Primary Buttons */
@@ -179,7 +226,7 @@ st.markdown("""
         background-color: #FFFFFF;
         border: 1px solid var(--brand-gold-border);
         border-radius: 10px;
-        padding: 20px;
+        padding: 18px 20px;
         margin-bottom: 1.2rem;
         box-shadow: 0 2px 8px rgba(74, 21, 37, 0.03);
     }
@@ -198,7 +245,6 @@ st.markdown("""
         margin-bottom: 0;
     }
 
-    /* Hide standard Streamlit header decoration to keep focus */
     header {visibility: hidden;}
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
@@ -206,9 +252,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- SAMPLE CODE ASSETS FOR HOW IT WORKS / PREVIEWS ---
+# --- SAMPLE CODE ASSETS ---
 SAMPLE_FILES = {
-    "Credit Union Delinquency Query (SQL)": {
+    "sample_delinquent_loans.sql": {
         "filename": "sample_delinquent_loans.sql",
         "language": "SQL",
         "description": "Calculates delinquent loan accounts past 30 days and projects risk tiers.",
@@ -236,7 +282,7 @@ WHERE l.Status = 'Active'
   AND l.DaysPastDue >= 30
 ORDER BY l.DaysPastDue DESC, l.PrincipalBalance DESC;"""
     },
-    "Member Risk & Credit Scoring (Python)": {
+    "member_credit_scoring.py": {
         "filename": "member_credit_scoring.py",
         "language": "Python",
         "description": "Calculates member creditworthiness based on debt-to-income (DTI) and tenure.",
@@ -278,7 +324,7 @@ def evaluate_member_risk(member_data: Dict[str, Any]) -> Dict[str, Any]:
         "approved": final_score >= 640
     }'''
     },
-    "Monthly Dividend Calculation (DAX)": {
+    "dividend_calculation.dax": {
         "filename": "dividend_calculation.dax",
         "language": "DAX",
         "description": "Calculates weighted dividend allocation across share certificate tiers.",
@@ -307,22 +353,23 @@ RETURN
 }
 
 
-# --- CLEAN COMPACT BRAND HEADER ---
+# --- PROMINENT BRAND HEADER WITH LOGO ---
 logo_path = "logo.png"
-col_logo_left, col_logo_right = st.columns([1, 7])
+col_logo_left, col_logo_right = st.columns([1, 6])
 with col_logo_left:
     if os.path.exists(logo_path):
-        st.image(logo_path, width=64)
+        st.image(logo_path, width=72)
 with col_logo_right:
-    st.markdown('<div class="brand-logo-text" style="padding-top: 12px;">THE RAM & CHISEL</div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand-logo-text">THE RAM & CHISEL</div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand-tagline-text">Precision Code Quality, Security & Documentation Audit</div>', unsafe_allow_html=True)
 
 
-# --- DYNAMIC PRICING RETRIEVAL ---
-current_price, current_currency = get_pricing()
-price_display = f"${current_price:.2f} {current_currency}" if current_currency != "USD" else f"${current_price:.0f}" if current_price.is_integer() else f"${current_price:.2f}"
+# --- DYNAMIC PRICING RETRIEVAL (NEVER HARDCODED) ---
+unit_price, currency = get_pricing()
+unit_price_display = f"${unit_price:.2f} {currency}" if currency != "USD" else f"${unit_price:.0f}" if unit_price.is_integer() else f"${unit_price:.2f}"
 
 
-# --- SIMPLIFIED MAIN NAVIGATION ---
+# --- SIMPLIFIED NAVIGATION TABS ---
 tab_analyze, tab_how, tab_security, tab_signin = st.tabs([
     "Analyze",
     "How It Works",
@@ -332,15 +379,15 @@ tab_analyze, tab_how, tab_security, tab_signin = st.tabs([
 
 
 # ==============================================================================
-# 1. ANALYZE (PRIMARY DESTINATION & WORKFLOW)
+# 1. ANALYZE (FILE-BASED USAGE BILLING WORKFLOW)
 # ==============================================================================
 with tab_analyze:
     st.markdown(f"""
     <div class="hero-container">
         <div class="hero-title">Code Quality & Security Audit</div>
-        <div class="hero-subtitle">Upload your code. Get a professional analysis and PDF report.</div>
-        <div class="hero-price">{price_display} per analysis</div>
-        <div class="hero-price-sub">NO SUBSCRIPTION. NO ACCOUNT REQUIRED.</div>
+        <div class="hero-subtitle">Upload one file or a folder. Get professional Markdown & PDF documentation.</div>
+        <div class="hero-price">{unit_price_display} per analyzed source file</div>
+        <div class="hero-price-sub">NO SUBSCRIPTION. NO ACCOUNT REQUIRED. ONE STRIPE CHECKOUT.</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -357,60 +404,146 @@ with tab_analyze:
             analysis = get_analysis(analysis_id)
 
             if analysis:
-                st.success("Payment verified successfully.")
+                st.success(f"Payment verified: {analysis.file_count} file(s) paid (${analysis.price:.2f} {analysis.currency}).")
+
+                # Retrieve in-memory files buffer
+                cached_files = st.session_state.get(f"job_files_{analysis_id}", {})
 
                 if analysis.status != "completed" or not analysis.report_filename or not os.path.exists(analysis.report_filename):
-                    with st.spinner("Generating code analysis & compiling PDF report..."):
-                        code_to_analyze = st.session_state.get(f"code_buf_{analysis_id}", "")
-                        if not code_to_analyze:
-                            code_to_analyze = "# Verified analysis via payment confirmation\n"
+                    with st.spinner(f"Analyzing {analysis.file_count} file(s) in memory & compiling Markdown/PDF reports..."):
+                        generated_reports = []
+                        primary_pdf = None
 
-                        metrics = CodeAnalyzer.analyze_source_code(code_to_analyze, filename=analysis.report_filename or "audit_source.py")
-                        pdf_path = generate_analysis_pdf(
+                        if not cached_files:
+                            # Fallback if page refreshed
+                            cached_files = {"audit_code.py": "# Verified analysis via payment session\n"}
+
+                        for fname, fcode in cached_files.items():
+                            metrics = CodeAnalyzer.analyze_source_code(fcode, filename=fname)
+                            md_content = metrics.get("markdown_report", "")
+
+                            # Save Markdown report
+                            md_clean_name = "".join(c if c.isalnum() or c in "._-" else "_" for c in fname)
+                            md_filename = os.path.join(REPORTS_DIR, f"{md_clean_name}_{analysis_id[:8]}.md")
+                            with open(md_filename, "w", encoding="utf-8") as mdf:
+                                mdf.write(md_content)
+
+                            # Save PDF report
+                            pdf_filename = generate_analysis_pdf(
+                                analysis_id=analysis_id,
+                                analysis_metrics=metrics,
+                                price_charged=analysis.unit_price,
+                                currency=analysis.currency
+                            )
+
+                            if not primary_pdf:
+                                primary_pdf = pdf_filename
+
+                            generated_reports.append({
+                                "filename": fname,
+                                "md_path": md_filename,
+                                "pdf_path": pdf_filename,
+                                "metrics": metrics
+                            })
+
+                        # Create ZIP bundle of all reports
+                        zip_file = create_reports_zip(analysis_id, generated_reports)
+                        update_analysis_status(
                             analysis_id=analysis_id,
-                            analysis_metrics=metrics,
-                            price_charged=analysis.price,
-                            currency=analysis.currency
+                            status="completed",
+                            report_filename=primary_pdf,
+                            zip_filename=zip_file
                         )
-                        update_analysis_status(analysis_id, "completed", report_filename=pdf_path)
 
-                        # ZERO CODE RETENTION: Purge code from memory buffer immediately
-                        if f"code_buf_{analysis_id}" in st.session_state:
-                            del st.session_state[f"code_buf_{analysis_id}"]
+                        # ZERO CODE RETENTION: Purge source code from memory immediately
+                        if f"job_files_{analysis_id}" in st.session_state:
+                            del st.session_state[f"job_files_{analysis_id}"]
 
                         analysis = get_analysis(analysis_id)
 
-                st.subheader("Your Analysis is Complete")
-                st.write(f"Report ID: `{analysis_id}`")
+                # Present completed reports
+                st.subheader(f"🎉 Audit Complete — {analysis.file_count} File(s)")
+                st.write(f"**Job ID:** `{analysis_id}` &nbsp;|&nbsp; **Total Charged:** `${analysis.price:.2f} {analysis.currency}`")
 
-                if analysis.report_filename and os.path.exists(analysis.report_filename):
-                    with open(analysis.report_filename, "rb") as pdf_file:
-                        pdf_bytes = pdf_file.read()
+                # Show ZIP download if multi-file
+                if analysis.zip_filename and os.path.exists(analysis.zip_filename):
+                    with open(analysis.zip_filename, "rb") as zf:
                         st.download_button(
-                            label=f"⬇️ Download PDF Analysis ({os.path.basename(analysis.report_filename)})",
-                            data=pdf_bytes,
-                            file_name=os.path.basename(analysis.report_filename),
-                            mime="application/pdf",
-                            key="btn_download_completed_pdf"
+                            label=f"📦 Download All Reports (.ZIP Archive)",
+                            data=zf.read(),
+                            file_name=os.path.basename(analysis.zip_filename),
+                            mime="application/zip",
+                            key="btn_download_zip"
                         )
+
+                # Individual file download list
+                st.markdown("#### Individual File Reports")
+                for r in os.listdir(REPORTS_DIR):
+                    if analysis_id[:8] in r and r.endswith(".pdf"):
+                        pdf_path = os.path.join(REPORTS_DIR, r)
+                        md_path = pdf_path.replace(".pdf", ".md")
+                        col_r1, col_r2, col_r3 = st.columns([3, 1, 1])
+                        with col_r1:
+                            st.write(f"📄 **{r.split('_' + analysis_id[:8])[0]}**")
+                        with col_r2:
+                            if os.path.exists(md_path):
+                                with open(md_path, "r", encoding="utf-8") as mf:
+                                    st.download_button("Markdown", mf.read(), file_name=os.path.basename(md_path), mime="text/markdown", key=f"dl_md_{r}")
+                        with col_r3:
+                            with open(pdf_path, "rb") as pf:
+                                st.download_button("PDF", pf.read(), file_name=os.path.basename(pdf_path), mime="application/pdf", key=f"dl_pdf_{r}")
+
                 st.markdown("<br>", unsafe_allow_html=True)
         else:
-            st.error(f"Payment verification issue: {verification.get('error', 'Unable to verify session.')}")
+            st.error(f"Payment verification issue: {verification.get('error', 'Unable to verify checkout session.')}")
 
-    # Primary Upload Interaction
-    input_mode = st.radio("Input method:", ["Upload Files", "Paste Snippet"], horizontal=True, label_visibility="collapsed")
-    raw_code = ""
-    target_filename = "snippet.py"
+    # Primary Upload Selection
+    input_mode = st.radio("Input method:", ["Upload Files or Folder (ZIP)", "Paste Code Snippet"], horizontal=True, label_visibility="collapsed")
+    
+    analyzable_files = {}
+    ignored_files = []
 
-    if input_mode == "Upload Files":
-        uploaded_file = st.file_uploader(
-            "Upload your code",
-            type=["py", "sql", "dax", "js", "ts", "cpp", "txt", "json"],
-            help="Supported formats: PY, SQL, DAX, JS, TS, CPP, TXT, JSON"
+    if input_mode == "Upload Files or Folder (ZIP)":
+        uploaded_items = st.file_uploader(
+            "Upload your code or project",
+            type=["py", "sql", "dax", "js", "ts", "jsx", "tsx", "cpp", "c", "h", "hpp", "json", "txt", "zip"],
+            accept_multiple_files=True,
+            help="Upload single files, multiple files, or a .zip archive of a folder."
         )
-        if uploaded_file:
-            raw_code = uploaded_file.getvalue().decode("utf-8", errors="ignore")
-            target_filename = uploaded_file.name
+
+        if uploaded_items:
+            for item in uploaded_items:
+                if item.name.lower().endswith(".zip"):
+                    # Process ZIP archive in memory
+                    try:
+                        with zipfile.ZipFile(io.BytesIO(item.getvalue())) as zf:
+                            for zip_info in zf.infolist():
+                                if zip_info.is_dir():
+                                    continue
+                                fname = zip_info.filename
+                                if CodeAnalyzer.is_analyzable_file(fname):
+                                    try:
+                                        content = zf.read(zip_info).decode("utf-8", errors="ignore")
+                                        if content.strip():
+                                            analyzable_files[fname] = content
+                                        else:
+                                            ignored_files.append(f"{fname} (empty)")
+                                    except Exception:
+                                        ignored_files.append(fname)
+                                else:
+                                    ignored_files.append(fname)
+                    except Exception as e:
+                        st.error(f"Error reading ZIP file '{item.name}': {e}")
+                else:
+                    if CodeAnalyzer.is_analyzable_file(item.name):
+                        content = item.getvalue().decode("utf-8", errors="ignore")
+                        if content.strip():
+                            analyzable_files[item.name] = content
+                        else:
+                            ignored_files.append(f"{item.name} (empty)")
+                    else:
+                        ignored_files.append(item.name)
+
     else:
         pasted_text = st.session_state.get("quick_loaded_code", "")
         raw_code = st.text_area(
@@ -419,18 +552,51 @@ with tab_analyze:
             height=200,
             placeholder="Paste Python, SQL, DAX, JavaScript, or C++ code here..."
         )
+        if raw_code.strip():
+            analyzable_files["snippet.py"] = raw_code
 
-    # Privacy guarantee line
+    # Privacy Guarantee Line
     st.markdown('<div class="privacy-notice">🔒 <b>Private by design</b> — source code isn\'t retained after analysis.</div>', unsafe_allow_html=True)
 
-    # Primary Action CTA
-    if raw_code.strip():
-        line_count = len(raw_code.splitlines())
-        st.caption(f"Ready: `{target_filename}` ({line_count} lines)")
+    # Pre-Payment Scan & Calculation Box
+    billable_count = len(analyzable_files)
 
-        if st.button(f"Analyze My Code — {price_display}", type="primary", key="btn_primary_analyze"):
-            analysis_rec = create_analysis_record(user_id=None, org_id=None)
-            st.session_state[f"code_buf_{analysis_rec.id}"] = raw_code
+    if billable_count > 0:
+        total_price = round(billable_count * unit_price, 2)
+        total_price_formatted = f"${total_price:.2f} {currency}"
+
+        st.markdown(f"""
+        <div class="scan-box">
+            <div class="scan-header">📁 Project Scan Complete</div>
+            <div class="scan-summary">
+                <b>{billable_count + len(ignored_files)}</b> files found &nbsp;•&nbsp; 
+                <span style="color:#10B981; font-weight:600;">{billable_count} billable file{'s' if billable_count > 1 else ''}</span> &nbsp;•&nbsp; 
+                <span style="color:#6B7280;">{len(ignored_files)} ignored</span>
+            </div>
+            <div class="price-calculation">
+                {billable_count} file{'s' if billable_count > 1 else ''} × {unit_price_display} = {total_price_formatted}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        with st.expander(f"View billable file list ({billable_count} files)", expanded=True):
+            for f in analyzable_files.keys():
+                st.markdown(f"✓ `{f}`")
+            if ignored_files:
+                st.caption(f"Ignored files ({len(ignored_files)}): {', '.join(list(ignored_files)[:10])}{'...' if len(ignored_files) > 10 else ''}")
+
+        # Single Primary CTA
+        btn_label = f"Analyze {billable_count} File{'s' if billable_count > 1 else ''} — {total_price_formatted}"
+        if st.button(btn_label, type="primary", key="btn_pay_job"):
+            # Create Analysis Job in Database
+            analysis_rec = create_analysis_record(
+                user_id=None,
+                org_id=None,
+                file_count=billable_count,
+                filenames=list(analyzable_files.keys())
+            )
+            # Store in-memory buffer
+            st.session_state[f"job_files_{analysis_rec.id}"] = analyzable_files
 
             app_base_url = os.getenv("APP_URL", "http://localhost:8501")
             checkout_info = create_guest_checkout_session(
@@ -444,12 +610,13 @@ with tab_analyze:
                 st.rerun()
             else:
                 st.link_button(
-                    f"👉 Continue to Stripe Checkout ({price_display})",
+                    f"👉 Proceed to Stripe Checkout ({total_price_formatted})",
                     url=checkout_info["url"],
                     type="primary"
                 )
+
     else:
-        st.button(f"Analyze My Code — {price_display}", disabled=True, key="btn_disabled_analyze")
+        st.button(f"Analyze — {unit_price_display} per file", disabled=True, key="btn_disabled_analyze")
 
     # Secondary Sample Trigger (Non-competing, subtle)
     st.markdown("<br>", unsafe_allow_html=True)
@@ -462,29 +629,29 @@ with tab_analyze:
 
 
 # ==============================================================================
-# 2. HOW IT WORKS
+# 2. HOW IT WORKS & CANONICAL DEMO REPORT
 # ==============================================================================
 with tab_how:
     st.subheader("How The Ram & Chisel Works")
-    st.write("A direct, three-step process to audit your source code without friction or subscriptions.")
+    st.write("A direct, file-based analysis service that turns legacy and modern code into structured documentation.")
 
-    st.markdown("""
+    st.markdown(f"""
     <div class="info-card">
-        <h4>1. Upload Code</h4>
-        <p>Submit a source file (.py, .sql, .dax, .js, .ts, .cpp, .txt) or paste a snippet directly into the analyzer.</p>
+        <h4>1. Upload File or Project Folder</h4>
+        <p>Submit single source files or a project folder. Our scanner automatically identifies supported files and ignores irrelevant assets.</p>
     </div>
     <div class="info-card">
-        <h4>2. Pay One Simple Price</h4>
-        <p>Complete a secure one-time payment via Stripe. No ongoing commitments or subscription locks.</p>
+        <h4>2. Simple File-Based Pricing ({unit_price_display}/file)</h4>
+        <p>You only pay for analyzable source files ({unit_price_display} per file). Complete one single Stripe payment for the entire batch.</p>
     </div>
     <div class="info-card">
-        <h4>3. Receive Professional PDF Report</h4>
-        <p>Our static engine analyzes syntax, complexity, security patterns, and maintainability in memory, delivering a downloadable PDF audit.</p>
+        <h4>3. Receive Markdown & PDF Reports</h4>
+        <p>Every analyzed file receives its own 7-section canonical Markdown document and rendered PDF report. Multi-file uploads include a complete ZIP archive.</p>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.subheader("Sample Analysis Preview")
+    st.subheader("Canonical 7-Section Report Preview")
     st.write("Explore an example report generated by our static analysis engine.")
 
     preview_sample_key = st.selectbox("Select example:", list(SAMPLE_FILES.keys()), key="select_preview_sample")
@@ -494,19 +661,13 @@ with tab_how:
         st.code(preview_sample["code"], language=preview_sample["language"].lower())
 
     if st.button("Generate Preview Report", key="btn_run_preview"):
-        with st.spinner("Generating sample metrics..."):
+        with st.spinner("Generating sample metrics & 7-section report..."):
             preview_metrics = CodeAnalyzer.analyze_source_code(
                 code_text=preview_sample["code"],
                 filename=preview_sample["filename"]
             )
             
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.metric("Quality Score", f"{preview_metrics.get('quality_score', 100)} / 100")
-            with c2:
-                st.metric("Audit Grade", preview_metrics.get('grade', 'A'))
-            with c3:
-                st.metric("Lines of Code", preview_metrics.get('total_loc', 0))
+            st.markdown(preview_metrics["markdown_report"])
 
             preview_pdf = generate_analysis_pdf(
                 analysis_id="SAMPLE-PREVIEW",
@@ -514,15 +675,26 @@ with tab_how:
                 price_charged=0.00,
                 currency="USD"
             )
-            if os.path.exists(preview_pdf):
-                with open(preview_pdf, "rb") as f:
-                    st.download_button(
-                        label="⬇️ Download Sample PDF",
-                        data=f.read(),
-                        file_name=f"sample_{preview_sample['filename']}.pdf",
-                        mime="application/pdf",
-                        key="btn_dl_sample_preview_pdf"
-                    )
+            
+            c_dl1, c_dl2 = st.columns(2)
+            with c_dl1:
+                st.download_button(
+                    label="⬇️ Download Markdown Report (.md)",
+                    data=preview_metrics["markdown_report"],
+                    file_name=f"{preview_sample['filename']}.md",
+                    mime="text/markdown",
+                    key="btn_dl_demo_md"
+                )
+            with c_dl2:
+                if os.path.exists(preview_pdf):
+                    with open(preview_pdf, "rb") as pf:
+                        st.download_button(
+                            label="⬇️ Download PDF Report (.pdf)",
+                            data=pf.read(),
+                            file_name=f"{preview_sample['filename']}.pdf",
+                            mime="application/pdf",
+                            key="btn_dl_demo_pdf"
+                        )
 
 
 # ==============================================================================
@@ -549,14 +721,14 @@ with tab_security:
     </div>
 
     <div class="info-card">
-        <h4>Minimal Metadata Retention</h4>
-        <p>Our database retains only non-sensitive transactional records (transaction timestamp, analysis identifier, price paid, and fulfillment status) for customer receipt and accounting verification.</p>
+        <h4>Minimal Transaction Metadata</h4>
+        <p>Our database retains only non-sensitive transactional records (transaction timestamp, analysis job identifier, price paid, and fulfillment status) for customer receipt and accounting verification.</p>
     </div>
     """, unsafe_allow_html=True)
 
 
 # ==============================================================================
-# 4. SIGN IN & ORGANIZATION PORTAL / ADMIN
+# 4. SIGN IN & ORGANIZATION PORTAL / ADMIN PRICING
 # ==============================================================================
 with tab_signin:
     if "auth_user" not in st.session_state:
@@ -634,7 +806,6 @@ with tab_signin:
                         st.error("Invalid administrator key.")
 
     else:
-        # Authenticated Session View
         user = st.session_state.auth_user
         is_superadmin = user.get("role") == "superadmin"
         org = get_organization(user["organization_id"]) if user.get("organization_id") else None
@@ -656,20 +827,20 @@ with tab_signin:
 
         # Admin Centralized Pricing Controls
         if is_superadmin or user.get("role") == "admin":
-            st.subheader("Centralized Pricing Configuration")
-            st.caption("Update the single authoritative price for all subsequent code analyses.")
+            st.subheader("⚙️ Centralized Authoritative Pricing")
+            st.caption("Change the base price per analyzed file. Updates take effect immediately across the application.")
 
             curr_price, curr_currency = get_pricing()
-            st.write(f"Current System Price: **${curr_price:.2f} {curr_currency}**")
+            st.write(f"Current Base Price: **${curr_price:.2f} {curr_currency}** per file")
 
             with st.form("form_update_pricing"):
-                new_price = st.number_input("Analysis Price", min_value=1.0, max_value=1000.0, value=float(curr_price), step=1.0, format="%.2f")
+                new_price = st.number_input("Analysis Price Per File", min_value=1.0, max_value=1000.0, value=float(curr_price), step=1.0, format="%.2f")
                 new_curr = st.selectbox("Currency", ["USD", "EUR", "GBP", "CAD", "AUD"], index=["USD", "EUR", "GBP", "CAD", "AUD"].index(curr_currency) if curr_currency in ["USD", "EUR", "GBP", "CAD", "AUD"] else 0)
                 btn_save_price = st.form_submit_button("Update Global Price")
 
                 if btn_save_price:
                     p, c = set_pricing(new_price, new_curr)
-                    st.success(f"Price updated to **${p:.2f} {c}** across the application.")
+                    st.success(f"✅ Price updated to **${p:.2f} {c} per file**! Public page and checkout sessions immediately reflect this price.")
                     st.rerun()
 
         # Organization Team Portal Features
@@ -679,12 +850,12 @@ with tab_signin:
             org_code = st.text_area("Source code:", height=160, placeholder="Paste team code here...")
 
             if org_code.strip():
-                if st.button(f"Run Team Audit ({price_display})", type="primary", key="btn_team_audit"):
-                    analysis_rec = create_analysis_record(user_id=user["id"], org_id=user["organization_id"])
+                if st.button(f"Run Team Audit ({unit_price_display})", type="primary", key="btn_team_audit"):
+                    analysis_rec = create_analysis_record(user_id=user["id"], org_id=user["organization_id"], file_count=1, filenames=["team_code.py"])
                     with st.spinner("Processing analysis..."):
                         charge_res = charge_organization_analysis(org_id=user["organization_id"], analysis_id=analysis_rec.id)
                         if charge_res.get("success"):
-                            metrics = CodeAnalyzer.analyze_source_code(org_code)
+                            metrics = CodeAnalyzer.analyze_source_code(org_code, filename="team_code.py")
                             pdf_path = generate_analysis_pdf(analysis_id=analysis_rec.id, analysis_metrics=metrics, price_charged=analysis_rec.price, currency=analysis_rec.currency)
                             update_analysis_status(analysis_rec.id, "completed", report_filename=pdf_path)
                             st.success("Analysis complete.")
@@ -698,9 +869,9 @@ with tab_signin:
             usage = get_org_usage(user["organization_id"])
             u1, u2, u3 = st.columns(3)
             with u1:
-                st.metric("Analyses Completed", usage["analyses_count"])
+                st.metric("Jobs Completed", usage["analyses_count"])
             with u2:
-                st.metric("Rate Per Analysis", f"${usage['current_price']:.2f} {usage['currency']}")
+                st.metric("Rate Per File", f"${usage['current_price']:.2f} {usage['currency']}")
             with u3:
                 st.metric("Total Billed", f"${usage['total_usage_amount']:.2f} {usage['currency']}")
 
