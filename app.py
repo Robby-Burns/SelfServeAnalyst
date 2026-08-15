@@ -2,6 +2,8 @@ import streamlit as st
 import os
 import glob
 import docker
+import sys
+import subprocess
 from dotenv import load_dotenv
 from typing import TypedDict, Literal
 
@@ -13,10 +15,11 @@ from langchain_community.agent_toolkits.sql.base import create_sql_agent
 from langchain.tools import tool
 from langgraph.graph import StateGraph, END
 
-# --- 1. CONFIGURATION & CONSTANTS ---
-st.set_page_config(page_title="Credit Union AI Analyst", page_icon="🏦", layout="centered")
+from setup_db import create_dummy_db
 
-# Load Environment Variables (API Keys & DB Config)
+# --- 1. CONFIGURATION & CONSTANTS ---
+st.set_page_config(page_title="Credit Union AI Analyst", page_icon="🏦", layout="wide")
+
 load_dotenv()
 
 CHART_DIR = "charts"
@@ -24,17 +27,9 @@ DOCKER_CONTAINER_NAME = "sandbox"
 DOCKER_WORKDIR = "/workspace"
 
 # DATABASE SETUP (Agnostic)
-# 1. We check the .env file for a 'DATABASE_URL'
-# 2. If not found, we fall back to the local SQLite file
-# NOTE: If using PostgreSQL/MySQL, ensure you install the driver (e.g., pip install psycopg2)
 default_db = "sqlite:///credit_union.db"
 DB_URI = os.getenv("DATABASE_URL", default_db)
 
-import sys
-import subprocess
-from setup_db import create_dummy_db
-
-# Ensure charts directory exists
 os.makedirs(CHART_DIR, exist_ok=True)
 
 # Auto-initialize SQLite database if not present
@@ -44,7 +39,64 @@ if DB_URI.startswith("sqlite:///"):
         create_dummy_db()
 
 
-# --- 2. CORE LOGIC (Cached) ---
+# --- 2. SIDEBAR CONFIGURATION ---
+with st.sidebar:
+    st.header("⚙️ Configuration")
+
+    env_api_key = (
+        os.getenv("OPENROUTER_API_KEY")
+        or os.getenv("OPENAI_API_KEY")
+        or os.getenv("LLM_API_KEY")
+        or ""
+    )
+    env_base_url = (
+        os.getenv("OPENROUTER_BASE_URL")
+        or os.getenv("OPENAI_API_BASE")
+        or os.getenv("LLM_BASE_URL")
+        or ("https://openrouter.ai/api/v1" if ("sk-or-" in env_api_key or os.getenv("OPENROUTER_API_KEY")) else "")
+    )
+    env_model = (
+        os.getenv("LLM_MODEL")
+        or os.getenv("DEFAULT_MODEL")
+        or ("openai/gpt-4o" if "openrouter" in env_base_url else "gpt-4o")
+    )
+
+    api_key_input = st.text_input(
+        "OpenRouter / OpenAI API Key",
+        value=env_api_key,
+        type="password",
+        help="Enter your OpenRouter key (sk-or-v1-...) or OpenAI key"
+    )
+
+    model_options = [
+        "openai/gpt-4o",
+        "openai/gpt-4o-mini",
+        "anthropic/claude-3.5-sonnet",
+        "google/gemini-2.5-flash",
+        "meta-llama/llama-3.3-70b-instruct",
+        "gpt-4o",
+        "gpt-4o-mini"
+    ]
+    default_idx = model_options.index(env_model) if env_model in model_options else 0
+    model_choice = st.selectbox("LLM Model", model_options, index=default_idx)
+
+    base_url_input = st.text_input(
+        "API Base URL",
+        value=env_base_url if env_base_url else ("https://openrouter.ai/api/v1" if "sk-or-" in api_key_input else ""),
+        help="Leave empty for OpenAI, or use https://openrouter.ai/api/v1 for OpenRouter"
+    )
+
+    st.markdown("---")
+    st.subheader("💡 Example Questions")
+    st.markdown("""
+    - *How many members do we have?*
+    - *What is the total loan amount by loan type?*
+    - *Plot the distribution of loans by status.*
+    - *Show a bar chart of average account balances by account type.*
+    """)
+
+
+# --- 3. CORE LOGIC ---
 @st.cache_resource
 def get_docker_container():
     """Connects to the running Docker container if available, or returns None."""
@@ -56,28 +108,13 @@ def get_docker_container():
         return None
 
 
-def get_llm():
+def get_llm(api_key: str, model: str, base_url: str):
     """Builds the ChatOpenAI client supporting OpenAI, OpenRouter, or custom providers."""
-    api_key = (
-        os.getenv("OPENROUTER_API_KEY")
-        or os.getenv("OPENAI_API_KEY")
-        or os.getenv("LLM_API_KEY")
-    )
-    base_url = (
-        os.getenv("OPENROUTER_BASE_URL")
-        or os.getenv("OPENAI_API_BASE")
-        or os.getenv("LLM_BASE_URL")
-    )
+    if not api_key:
+        return None
 
-    # Auto-detect OpenRouter
-    if not base_url and (os.getenv("OPENROUTER_API_KEY") or (api_key and "sk-or-" in str(api_key))):
+    if not base_url and "sk-or-" in api_key:
         base_url = "https://openrouter.ai/api/v1"
-
-    model = (
-        os.getenv("LLM_MODEL")
-        or os.getenv("DEFAULT_MODEL")
-        or ("openai/gpt-4o" if (base_url and "openrouter" in base_url) else "gpt-4o")
-    )
 
     default_headers = {}
     if base_url and "openrouter" in base_url:
@@ -95,16 +132,16 @@ def get_llm():
     )
 
 
-@st.cache_resource
-def build_engine():
+def build_engine(api_key: str, model: str, base_url: str):
     """Initializes LLM, DB, and Agents."""
+    llm = get_llm(api_key, model, base_url)
+    if not llm:
+        return None, None
 
-    # 1. Setup Resources
     db = SQLDatabase.from_uri(DB_URI)
-    llm = get_llm()
     sql_toolkit = SQLDatabaseToolkit(db=db, llm=llm)
 
-    # 2. Define Custom Tools
+    # Visualization execution tool
     @tool
     def python_sandbox_tool(code: str) -> str:
         """Executes Python code for visualization."""
@@ -119,7 +156,6 @@ def build_engine():
             except Exception as e:
                 return f"Docker Error: {str(e)}"
         else:
-            # Fallback for cloud environments where Docker daemon is not directly accessible
             try:
                 result = subprocess.run(
                     [sys.executable, "-c", code],
@@ -134,7 +170,6 @@ def build_engine():
             except Exception as e:
                 return f"System Error: {str(e)}"
 
-    # 3. Create Agents
     # Agent A: Pure SQL Analyst
     sql_agent = create_sql_agent(
         llm=llm,
@@ -165,7 +200,7 @@ def build_engine():
     return sql_agent, vis_agent
 
 
-# --- 3. GRAPH DEFINITION ---
+# --- 4. GRAPH DEFINITION ---
 class AgentState(TypedDict):
     question: str
     answer: str
@@ -174,7 +209,6 @@ class AgentState(TypedDict):
 
 def create_graph(sql_agent, vis_agent):
     """Builds the LangGraph workflow."""
-
     def sql_node(state: AgentState):
         response = sql_agent.invoke(state["question"])
         return {"answer": response["output"], "source": "analyst"}
@@ -185,7 +219,7 @@ def create_graph(sql_agent, vis_agent):
 
     def route_logic(state) -> Literal["visualizer", "sql_analyst"]:
         q = state["question"].lower()
-        keywords = ["chart", "plot", "graph", "visualize", "trend", "map"]
+        keywords = ["chart", "plot", "graph", "visualize", "trend", "map", "distribution", "bar", "histogram"]
         if any(x in q for x in keywords):
             return "visualizer"
         return "sql_analyst"
@@ -205,86 +239,85 @@ def create_graph(sql_agent, vis_agent):
     return workflow.compile()
 
 
-# Initialize System
-sql_agent, vis_agent = build_engine()
-app_graph = create_graph(sql_agent, vis_agent)
-
-# --- 4. STREAMLIT UI ---
+# --- 5. STREAMLIT UI ---
 
 st.title("🏦 Self-Serve Credit Union Analyst")
+st.caption("Ask natural language questions to query member data, loans, and generate real-time visualizations.")
 
-# Initialize Session State
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+effective_api_key = api_key_input.strip()
 
-# Display Chat History
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-        # Display Image if present in history
-        if "image_path" in message and message["image_path"]:
-            if os.path.exists(message["image_path"]):
-                st.image(message["image_path"])
+if not effective_api_key:
+    st.warning("👈 **Please provide an API Key** in the sidebar (or set `OPENROUTER_API_KEY` in Railway Variables) to start querying.")
+    st.info("💡 You can get an API key at [openrouter.ai](https://openrouter.ai/) or [platform.openai.com](https://platform.openai.com/).")
+else:
+    # Initialize Engine & Graph
+    try:
+        sql_agent, vis_agent = build_engine(effective_api_key, model_choice, base_url_input.strip())
+        app_graph = create_graph(sql_agent, vis_agent)
+    except Exception as e:
+        st.error(f"❌ Failed to initialize AI Agent: {str(e)}")
+        app_graph = None
 
-                # Download Button logic
-                file_name = os.path.basename(message["image_path"])
-                with open(message["image_path"], "rb") as file:
-                    st.download_button(
-                        label=f"⬇️ Download {file_name}",
-                        data=file,
-                        file_name=file_name,
-                        mime="image/png",
-                        key=f"hist_btn_{file_name}"
-                    )
+    # Initialize Session State
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-# Handle Input
-if prompt := st.chat_input("Ask about members, loans, or trends..."):
-    # 1. Add User Message
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    # Display Chat History
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            if "image_path" in message and message["image_path"]:
+                if os.path.exists(message["image_path"]):
+                    st.image(message["image_path"])
+                    file_name = os.path.basename(message["image_path"])
+                    with open(message["image_path"], "rb") as file:
+                        st.download_button(
+                            label=f"⬇️ Download {file_name}",
+                            data=file,
+                            file_name=file_name,
+                            mime="image/png",
+                            key=f"hist_btn_{file_name}_{st.session_state.messages.index(message)}"
+                        )
 
-    # 2. Run AI Logic
-    with st.chat_message("assistant"):
-        with st.spinner("Analyzing data..."):
+    # Handle Input
+    if prompt := st.chat_input("Ask about members, loans, or trends..."):
+        if not app_graph:
+            st.error("Agent engine is not ready. Please verify your API Key.")
+        else:
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
 
-            # Snapshot of existing charts to detect new ones
-            existing_charts = set(glob.glob(f"{CHART_DIR}/*.png"))
+            with st.chat_message("assistant"):
+                with st.spinner("Analyzing data..."):
+                    existing_charts = set(glob.glob(f"{CHART_DIR}/*.png"))
 
-            # Invoke Graph
-            try:
-                response = app_graph.invoke({"question": prompt})
-                answer_text = response.get("answer", "No response generated.")
-                source = response.get("source", "unknown")
-            except Exception as e:
-                answer_text = f"❌ An error occurred: {str(e)}"
-                source = "error"
+                    try:
+                        response = app_graph.invoke({"question": prompt})
+                        answer_text = response.get("answer", "No response generated.")
+                    except Exception as e:
+                        answer_text = f"❌ An error occurred: {str(e)}"
 
-            # Detect if a new chart was created
-            current_charts = set(glob.glob(f"{CHART_DIR}/*.png"))
-            new_charts = list(current_charts - existing_charts)
+                    current_charts = set(glob.glob(f"{CHART_DIR}/*.png"))
+                    new_charts = list(current_charts - existing_charts)
+                    new_image_path = new_charts[0] if new_charts else None
 
-            # Smart Detection: If we find a new file, grab it.
-            new_image_path = new_charts[0] if new_charts else None
+                    st.markdown(answer_text)
 
-            # 3. Display Response
-            st.markdown(answer_text)
+                    if new_image_path:
+                        st.image(new_image_path)
+                        file_name = os.path.basename(new_image_path)
+                        with open(new_image_path, "rb") as file:
+                            st.download_button(
+                                label=f"⬇️ Download {file_name}",
+                                data=file,
+                                file_name=file_name,
+                                mime="image/png",
+                                key=f"new_btn_{file_name}"
+                            )
 
-            if new_image_path:
-                st.image(new_image_path)
-                file_name = os.path.basename(new_image_path)
-                with open(new_image_path, "rb") as file:
-                    st.download_button(
-                        label=f"⬇️ Download {file_name}",
-                        data=file,
-                        file_name=file_name,
-                        mime="image/png",
-                        key=f"new_btn_{file_name}"
-                    )
-
-            # 4. Save to History
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": answer_text,
-                "image_path": new_image_path
-            })
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": answer_text,
+                        "image_path": new_image_path
+                    })

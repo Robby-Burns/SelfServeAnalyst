@@ -18,11 +18,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy all app files
 COPY . .
 
-# Run DB setup to ensure initial database exists
+# Pre-generate SQLite DB
 RUN python setup_db.py
 
-# Expose Streamlit default port
 EXPOSE 8501
 
-# Run the Streamlit web application on Railway's dynamic $PORT (fallback to 8501)
-CMD ["sh", "-c", "streamlit run app.py --server.port=${PORT:-8501} --server.address=0.0.0.0 --server.headless=true --browser.gatherUsageStats=false"]
+CMD ["python", "server.py"]
