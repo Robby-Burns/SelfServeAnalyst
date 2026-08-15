@@ -8,3 +8,7 @@ docker
 python-dotenv
 pytest
 sqlalchemy
+pandas
+matplotlib
+seaborn
+scikit-learn

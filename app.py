@@ -30,21 +30,69 @@ DOCKER_WORKDIR = "/workspace"
 default_db = "sqlite:///credit_union.db"
 DB_URI = os.getenv("DATABASE_URL", default_db)
 
+import sys
+import subprocess
+from setup_db import create_dummy_db
+
 # Ensure charts directory exists
 os.makedirs(CHART_DIR, exist_ok=True)
+
+# Auto-initialize SQLite database if not present
+if DB_URI.startswith("sqlite:///"):
+    db_file = DB_URI.replace("sqlite:///", "")
+    if not os.path.exists(db_file):
+        create_dummy_db()
 
 
 # --- 2. CORE LOGIC (Cached) ---
 @st.cache_resource
 def get_docker_container():
-    """Connects to the running Docker container safely."""
+    """Connects to the running Docker container if available, or returns None."""
     try:
         client = docker.from_env()
         container = client.containers.get(DOCKER_CONTAINER_NAME)
         return container
-    except Exception as e:
-        st.error(f"⚠️ Docker Error: Could not connect to container '{DOCKER_CONTAINER_NAME}'. Is it running?")
-        st.stop()
+    except Exception:
+        return None
+
+
+def get_llm():
+    """Builds the ChatOpenAI client supporting OpenAI, OpenRouter, or custom providers."""
+    api_key = (
+        os.getenv("OPENROUTER_API_KEY")
+        or os.getenv("OPENAI_API_KEY")
+        or os.getenv("LLM_API_KEY")
+    )
+    base_url = (
+        os.getenv("OPENROUTER_BASE_URL")
+        or os.getenv("OPENAI_API_BASE")
+        or os.getenv("LLM_BASE_URL")
+    )
+
+    # Auto-detect OpenRouter
+    if not base_url and (os.getenv("OPENROUTER_API_KEY") or (api_key and "sk-or-" in str(api_key))):
+        base_url = "https://openrouter.ai/api/v1"
+
+    model = (
+        os.getenv("LLM_MODEL")
+        or os.getenv("DEFAULT_MODEL")
+        or ("openai/gpt-4o" if (base_url and "openrouter" in base_url) else "gpt-4o")
+    )
+
+    default_headers = {}
+    if base_url and "openrouter" in base_url:
+        default_headers = {
+            "HTTP-Referer": os.getenv("APP_URL", "https://railway.app"),
+            "X-Title": "Credit Union AI Analyst"
+        }
+
+    return ChatOpenAI(
+        model=model,
+        temperature=0,
+        api_key=api_key,
+        base_url=base_url if base_url else None,
+        default_headers=default_headers if default_headers else None
+    )
 
 
 @st.cache_resource
@@ -52,27 +100,39 @@ def build_engine():
     """Initializes LLM, DB, and Agents."""
 
     # 1. Setup Resources
-    container = get_docker_container()
     db = SQLDatabase.from_uri(DB_URI)
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = get_llm()
     sql_toolkit = SQLDatabaseToolkit(db=db, llm=llm)
 
     # 2. Define Custom Tools
     @tool
     def python_sandbox_tool(code: str) -> str:
-        """Executes Python code in a Docker container for visualization."""
-        try:
-            # Execute code inside Docker
-            result = container.exec_run(cmd=["python", "-c", code], workdir=DOCKER_WORKDIR)
-
-            # FIX: Decode the bytes to string
-            output = result.output.decode("utf-8")
-
-            if result.exit_code != 0:
-                return f"Execution Error:\n{output}"
-            return output if output else "Code executed successfully (no stdout)."
-        except Exception as e:
-            return f"System Error: {str(e)}"
+        """Executes Python code for visualization."""
+        container = get_docker_container()
+        if container:
+            try:
+                result = container.exec_run(cmd=["python", "-c", code], workdir=DOCKER_WORKDIR)
+                output = result.output.decode("utf-8")
+                if result.exit_code != 0:
+                    return f"Execution Error:\n{output}"
+                return output if output else "Code executed successfully (no stdout)."
+            except Exception as e:
+                return f"Docker Error: {str(e)}"
+        else:
+            # Fallback for cloud environments where Docker daemon is not directly accessible
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-c", code],
+                    cwd=os.getcwd(),
+                    capture_output=True,
+                    text=True,
+                    timeout=30
+                )
+                if result.returncode != 0:
+                    return f"Execution Error:\n{result.stderr}\n{result.stdout}"
+                return result.stdout if result.stdout else "Code executed successfully (no stdout)."
+            except Exception as e:
+                return f"System Error: {str(e)}"
 
     # 3. Create Agents
     # Agent A: Pure SQL Analyst
@@ -95,7 +155,7 @@ def build_engine():
             You are a Data Visualizer.
             1. Query data using SQL.
             2. Use 'python_sandbox_tool' to plot it using matplotlib/seaborn.
-            3. ALWAYS save charts to the '{CHART_DIR}' folder inside the container.
+            3. ALWAYS save charts to the '{CHART_DIR}' folder.
             4. Generate a unique snake_case filename (e.g., '{CHART_DIR}/loan_dist_v1.png').
             5. DO NOT use 'final_chart.png'.
             6. Do not use plt.show().
