@@ -13,7 +13,9 @@ from sqlalchemy import (
     ForeignKey,
     select,
     desc,
-    func
+    func,
+    inspect,
+    text
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship, scoped_session
 
@@ -143,6 +145,22 @@ def init_db(db_uri=None):
 
     _engine = create_engine(db_uri, **engine_kwargs)
     Base.metadata.create_all(_engine)
+
+    # Automatically migrate missing columns on existing databases (e.g. Neon PostgreSQL)
+    try:
+        inspector = inspect(_engine)
+        if "analyses" in inspector.get_table_names():
+            existing_cols = {c["name"] for c in inspector.get_columns("analyses")}
+            with _engine.begin() as conn:
+                if "file_count" not in existing_cols:
+                    conn.execute(text("ALTER TABLE analyses ADD COLUMN file_count INTEGER DEFAULT 1 NOT NULL"))
+                if "unit_price" not in existing_cols:
+                    conn.execute(text("ALTER TABLE analyses ADD COLUMN unit_price FLOAT DEFAULT 5.0 NOT NULL"))
+                if "zip_filename" not in existing_cols:
+                    conn.execute(text("ALTER TABLE analyses ADD COLUMN zip_filename VARCHAR(255)"))
+    except Exception as e:
+        print(f"Schema migration note: {e}")
+
     _SessionFactory = scoped_session(sessionmaker(bind=_engine))
 
     # Ensure default pricing config exists ($5.00 USD)
