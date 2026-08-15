@@ -102,6 +102,8 @@ with st.sidebar:
 @st.cache_resource
 def get_docker_container():
     """Connects to the running Docker container if available, or returns None."""
+    if sys.platform != "win32" and not os.path.exists("/var/run/docker.sock"):
+        return None
     try:
         client = docker.from_env()
         container = client.containers.get(DOCKER_CONTAINER_NAME)
