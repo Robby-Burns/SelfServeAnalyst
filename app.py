@@ -601,6 +601,13 @@ with tab_analyze:
         st.markdown('<div class="hero-pitch-title">Precision Craftsmanship Applied to Code Audits</div>', unsafe_allow_html=True)
         st.markdown('<div class="hero-pitch-subtitle">Submit raw source code or legacy projects. Receive rigorous security evaluations, architectural insights, and certified PDF documentation.</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="price-pill"><b>{unit_price_display} per analyzed file</b> &nbsp;•&nbsp; No subscription. No account needed.</div>', unsafe_allow_html=True)
+        
+        st.markdown("""
+<div class="info-card" style="margin-top: 0.6rem;">
+<h4 style="color: #3D1220; margin-top: 0; margin-bottom: 6px; font-size: 1.05rem;">7-Section Canonical Documentation</h4>
+<p style="color: #5C4A50; font-size: 0.92rem; line-height: 1.5; margin-bottom: 0;">Every analyzed file receives a complete overview, business logic extraction, input/output mappings, external dependencies, data relationships, and best practice recommendations in Markdown and PDF.</p>
+</div>
+""", unsafe_allow_html=True)
 
     with col_upload:
         st.markdown("""
