@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install system dependencies if any
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
@@ -15,12 +15,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all app files
+# Copy all files
 COPY . .
 
-# Pre-generate SQLite DB
-RUN python setup_db.py
+# Ensure entrypoint is executable and DB is initialized
+RUN chmod +x entrypoint.sh && python setup_db.py
 
 EXPOSE 8501
 
-CMD ["python", "server.py"]
+ENTRYPOINT ["/bin/sh", "entrypoint.sh"]

@@ -4,6 +4,8 @@ import glob
 import docker
 import sys
 import subprocess
+import matplotlib
+matplotlib.use('Agg')
 from dotenv import load_dotenv
 from typing import TypedDict, Literal
 
