@@ -8,3 +8,11 @@ enableWebsocketCompression = false
 
 [browser]
 gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#4A1525"
+backgroundColor = "#FDFBF7"
+secondaryBackgroundColor = "#F4EDE2"
+textColor = "#1F070E"
+font = "sans serif"

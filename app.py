@@ -39,46 +39,144 @@ init_db()
 
 # Page Setup
 st.set_page_config(
-    page_title="Code Analysis & Security Audit",
+    page_title="The Ram & Chisel — Code Quality & Security Audit",
     page_icon="🛡️",
     layout="centered"
 )
 
-# Custom Styling for Clean Pay-Per-Result UX
+# Custom Styling for The Ram and Chisel (Burgundy & Gold Palette)
 st.markdown("""
 <style>
-    .price-badge {
-        background-color: #F1F5F9;
-        border: 1px solid #CBD5E1;
-        border-radius: 8px;
-        padding: 12px 18px;
-        font-size: 1.15rem;
-        font-weight: 600;
-        color: #0F172A;
-        margin-bottom: 1rem;
-        display: inline-block;
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+    :root {
+        --brand-burgundy: #4A1525;
+        --brand-burgundy-dark: #2F0B16;
+        --brand-burgundy-light: #5E1D31;
+        --brand-gold: #D8A246;
+        --brand-gold-light: #F7E7C4;
+        --brand-gold-border: #E5C378;
+        --bg-cream: #FAF7F2;
+        --bg-cream-dark: #F3ECE1;
+        --text-dark: #1F070E;
     }
-    .metric-card {
-        background-color: #F8FAFC;
-        border: 1px solid #E2E8F0;
+
+    .stApp {
+        background-color: var(--bg-cream);
+        color: var(--text-dark);
+        font-family: 'Inter', sans-serif;
+    }
+
+    .brand-title {
+        font-family: 'Cinzel', serif;
+        font-size: 2.2rem;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        color: var(--brand-burgundy);
+        margin-bottom: 0.15rem;
+    }
+
+    .brand-tagline {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--brand-gold);
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        margin-bottom: 1.2rem;
+    }
+
+    .price-badge {
+        background-color: var(--brand-burgundy);
+        border: 2px solid var(--brand-gold);
+        border-radius: 10px;
+        padding: 14px 20px;
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--brand-gold-light);
+        margin-bottom: 1.5rem;
+        display: inline-block;
+        box-shadow: 0 4px 12px rgba(74, 21, 37, 0.15);
+    }
+
+    .price-badge b {
+        color: #FFFFFF;
+        font-size: 1.25rem;
+    }
+
+    .stButton > button, div.stDownloadButton > button {
+        background: linear-gradient(135deg, var(--brand-burgundy) 0%, var(--brand-burgundy-dark) 100%) !important;
+        color: var(--brand-gold-light) !important;
+        font-weight: 700 !important;
+        border: 1.5px solid var(--brand-gold) !important;
+        border-radius: 8px !important;
+        padding: 0.55rem 1.25rem !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .stButton > button:hover, div.stDownloadButton > button:hover {
+        background: linear-gradient(135deg, var(--brand-gold) 0%, #C59B27 100%) !important;
+        color: var(--brand-burgundy-dark) !important;
+        border-color: var(--brand-burgundy) !important;
+        box-shadow: 0 4px 14px rgba(216, 162, 70, 0.4) !important;
+    }
+
+    .metric-box {
+        background-color: #FFFFFF;
+        border: 1px solid var(--brand-gold-border);
         border-radius: 8px;
         padding: 16px;
         text-align: center;
+        box-shadow: 0 2px 6px rgba(74, 21, 37, 0.05);
     }
-    .stDownloadButton button {
-        background-color: #10B981 !important;
-        color: white !important;
-        font-weight: bold !important;
-        border: none !important;
+
+    /* Tabs Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        border-bottom: 2px solid var(--brand-gold-border);
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        font-weight: 600;
+        color: var(--brand-burgundy);
+        padding: 8px 16px;
+        border-radius: 6px 6px 0 0;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: var(--brand-burgundy) !important;
+        color: var(--brand-gold-light) !important;
+        border-bottom: 3px solid var(--brand-gold) !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 
+# --- BRAND HEADER ---
+logo_path = "logo.png"
+
+col_logo, col_title = st.columns([1, 4])
+with col_logo:
+    if os.path.exists(logo_path):
+        st.image(logo_path, width=110)
+with col_title:
+    st.markdown('<div class="brand-title">THE RAM & CHISEL</div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand-tagline">Precision Code Quality & Security Audit</div>', unsafe_allow_html=True)
+
+# Sidebar Branding
+with st.sidebar:
+    if os.path.exists(logo_path):
+        st.image(logo_path, width=120)
+    st.markdown("### **The Ram & Chisel**")
+    st.caption("A rigorous, pay-per-result code audit platform. Give us your code, pay one simple price, and receive a PDF report.")
+    st.markdown("---")
+    st.caption("🔒 **Zero Code Retention Guarantee**")
+    st.caption("We do not permanently retain source code after processing.")
+
+
 # --- NAVIGATION TABS ---
 tab_guest, tab_org, tab_admin = st.tabs([
-    "🚀 Analyze Code (Guest)",
-    "🏢 Company / Organization",
+    "🚀 Individual Audit",
+    "🏢 Organization Portal",
     "⚙️ Admin & Pricing"
 ])
 
@@ -87,8 +185,8 @@ tab_guest, tab_org, tab_admin = st.tabs([
 # 1. GUEST / INDIVIDUAL FLOW
 # ==============================================================================
 with tab_guest:
-    st.header("🛡️ Code Quality & Security Analysis")
-    st.caption("Submit your code, pay one simple price, and receive a professional PDF audit.")
+    st.subheader("🛡️ Instant Code Analysis")
+    st.caption("Submit your code, pay the configured price, and instantly receive a professional PDF audit.")
 
     # Centralized Price Display (No hardcoded values)
     current_price, current_currency = get_pricing()
@@ -104,7 +202,7 @@ with tab_guest:
     return_session_id = query_params.get("session_id")
 
     if return_session_id:
-        st.info("🔄 Verifying payment confirmation...")
+        st.info("🔄 Verifying payment confirmation with Stripe...")
         verification = verify_checkout_session(return_session_id)
 
         if verification.get("success"):
@@ -113,15 +211,12 @@ with tab_guest:
 
             if analysis:
                 st.success("✅ Payment verified successfully!")
-                
+
                 # Check if report already generated
                 if analysis.status != "completed" or not analysis.report_filename or not os.path.exists(analysis.report_filename):
-                    # Process Analysis and generate PDF
-                    with st.spinner("Running in-memory static analysis & generating PDF report..."):
-                        # Retrieve temporary code buffer if present in session state
+                    with st.spinner("Running The Ram & Chisel in-memory audit & compiling PDF..."):
                         code_to_analyze = st.session_state.get(f"code_buf_{analysis_id}", "")
                         if not code_to_analyze:
-                            # Sample analysis if session state refreshed
                             code_to_analyze = "# Code verified through payment session\nimport os\n# Analysis complete"
 
                         metrics = CodeAnalyzer.analyze_source_code(code_to_analyze)
@@ -140,14 +235,14 @@ with tab_guest:
                         analysis = get_analysis(analysis_id)
 
                 # Present completed PDF for direct download
-                st.subheader("🎉 Analysis Complete")
-                st.write(f"Your code analysis report **(Analysis ID: `{analysis_id}`)** is ready.")
+                st.subheader("🎉 Audit Complete")
+                st.write(f"Your Ram & Chisel code audit **(Analysis ID: `{analysis_id}`)** is ready.")
 
                 if analysis.report_filename and os.path.exists(analysis.report_filename):
                     with open(analysis.report_filename, "rb") as pdf_file:
                         pdf_bytes = pdf_file.read()
                         st.download_button(
-                            label=f"⬇️ Download PDF Report ({os.path.basename(analysis.report_filename)})",
+                            label=f"⬇️ Download PDF Audit Report ({os.path.basename(analysis.report_filename)})",
                             data=pdf_bytes,
                             file_name=os.path.basename(analysis.report_filename),
                             mime="application/pdf"
@@ -163,8 +258,8 @@ with tab_guest:
 
     if code_input_method == "Paste Code Snippet":
         raw_code = st.text_area(
-            "Paste your source code below:",
-            height=240,
+            "Paste source code for evaluation:",
+            height=230,
             placeholder="""def calculate_totals(items):\n    # Paste your Python, JavaScript, or other code here\n    total = sum(i['price'] for i in items)\n    return total"""
         )
     else:
@@ -174,19 +269,18 @@ with tab_guest:
             target_filename = uploaded_file.name
 
     if raw_code.strip():
-        # Quick validation summary
         line_count = len(raw_code.splitlines())
-        st.markdown(f"**Validation:** Ready for analysis (`{target_filename}` — {line_count} lines of code).")
+        st.markdown(f"**Validation:** Ready for audit (`{target_filename}` — {line_count} lines of code).")
 
         col1, col2 = st.columns([2, 1])
         with col1:
-            st.write(f"**Total due:** `{price_formatted}`")
+            st.write(f"**Total price:** `{price_formatted}`")
         with col2:
-            if st.button(f"💳 Pay & Analyze ({price_formatted})", type="primary"):
+            if st.button(f"💳 Pay & Audit ({price_formatted})", type="primary"):
                 # 1. Create analysis record with price snapshot
                 analysis_rec = create_analysis_record(user_id=None, org_id=None)
 
-                # Store code in temporary memory buffer for immediate processing upon payment
+                # Store code in temporary memory buffer
                 st.session_state[f"code_buf_{analysis_rec.id}"] = raw_code
 
                 # 2. Create Stripe Checkout Session
@@ -198,7 +292,6 @@ with tab_guest:
                 )
 
                 if checkout_info.get("mock"):
-                    # Instant test verification for development / mock mode
                     st.success("Test Mode: Simulating Stripe Payment...")
                     st.query_params["session_id"] = checkout_info["id"]
                     st.rerun()
@@ -217,8 +310,8 @@ with tab_guest:
 # 2. COMPANY / ORGANIZATION FLOW
 # ==============================================================================
 with tab_org:
-    st.header("🏢 Company & Organization Portal")
-    st.caption("Set up centralized billing once so employees can submit code analyses seamlessly.")
+    st.subheader("🏢 Company & Organization Accounts")
+    st.caption("Set up centralized company billing once so team members can submit code audits with no individual checkout required.")
 
     current_price, current_currency = get_pricing()
     price_formatted = f"${current_price:.2f} {current_currency}"
@@ -226,11 +319,10 @@ with tab_org:
     if "auth_user" not in st.session_state:
         st.session_state.auth_user = None
 
-    # Organization Authentication
     if not st.session_state.auth_user:
-        auth_mode = st.radio("Company Account:", ["Employee / Admin Login", "Register New Organization"], horizontal=True)
+        auth_mode = st.radio("Account Action:", ["Member / Admin Sign In", "Register Organization"], horizontal=True)
 
-        if auth_mode == "Employee / Admin Login":
+        if auth_mode == "Member / Admin Sign In":
             with st.form("org_login_form"):
                 login_email = st.text_input("Work Email")
                 login_pass = st.text_input("Password", type="password")
@@ -247,7 +339,7 @@ with tab_org:
 
         else:
             with st.form("org_reg_form"):
-                org_name = st.text_input("Company / Organization Name", placeholder="Acme Corporation")
+                org_name = st.text_input("Organization Name", placeholder="Acme Engineering")
                 admin_email = st.text_input("Admin Work Email")
                 admin_pass = st.text_input("Admin Password", type="password")
                 btn_reg = st.form_submit_button("Create Organization")
@@ -276,14 +368,13 @@ with tab_org:
                         st.warning("Please fill in all fields.")
 
     else:
-        # User is logged in
         user = st.session_state.auth_user
         org = get_organization(user["organization_id"]) if user.get("organization_id") else None
 
         col_top1, col_top2 = st.columns([3, 1])
         with col_top1:
-            st.subheader(f"🏢 {org.name if org else 'Company Portal'}")
-            st.caption(f"Logged in as **{user['email']}** ({user['role'].capitalize()})")
+            st.markdown(f"### 🏢 **{org.name if org else 'Company Portal'}**")
+            st.caption(f"Authenticated: **{user['email']}** &nbsp;|&nbsp; Role: **{user['role'].capitalize()}**")
         with col_top2:
             if st.button("Sign Out"):
                 st.session_state.auth_user = None
@@ -292,28 +383,26 @@ with tab_org:
         st.markdown("---")
 
         # 1. Company Analysis Submission
-        st.subheader("📥 Submit Code Analysis for Organization")
-        st.write(f"Organization analysis rate: **{price_formatted}** (charged directly to company card on file).")
+        st.subheader("📥 Submit Code for Organization Audit")
+        st.write(f"Rate: **{price_formatted}** (billed directly to company card on file per analysis).")
 
         org_code = st.text_area(
-            "Source Code for Company Audit:",
+            "Source Code for Evaluation:",
             height=180,
             placeholder="def process_payment(amount):\n    # Paste code here"
         )
 
         if org_code.strip():
-            if st.button(f"🚀 Run Company Analysis ({price_formatted})", type="primary"):
-                # Create analysis record with snapshot price
+            if st.button(f"🚀 Run Company Audit ({price_formatted})", type="primary"):
                 analysis_rec = create_analysis_record(user_id=user["id"], org_id=user["organization_id"])
 
-                with st.spinner("Charging company payment method & analyzing code..."):
+                with st.spinner("Processing company payment & analyzing code..."):
                     charge_result = charge_organization_analysis(
                         org_id=user["organization_id"],
                         analysis_id=analysis_rec.id
                     )
 
                     if charge_result.get("success"):
-                        # Execute in-memory analysis
                         metrics = CodeAnalyzer.analyze_source_code(org_code)
                         pdf_path = generate_analysis_pdf(
                             analysis_id=analysis_rec.id,
@@ -323,7 +412,7 @@ with tab_org:
                         )
                         update_analysis_status(analysis_rec.id, "completed", report_filename=pdf_path)
 
-                        st.success("✅ Analysis completed successfully!")
+                        st.success("✅ Audit completed successfully!")
                         with open(pdf_path, "rb") as pdf_file:
                             st.download_button(
                                 label="⬇️ Download Completed PDF Report",
@@ -351,9 +440,9 @@ with tab_org:
         # Admin Organization Settings
         if user.get("role") == "admin":
             st.markdown("---")
-            st.subheader("👥 Invite Employees")
+            st.subheader("👥 Invite Team Members")
             with st.form("invite_employee_form"):
-                new_emp_email = st.text_input("Employee Email")
+                new_emp_email = st.text_input("Member Work Email")
                 new_emp_pass = st.text_input("Temporary Password", type="password")
                 btn_invite = st.form_submit_button("Add Member")
 
@@ -375,14 +464,12 @@ with tab_org:
 # 3. ADMIN & PRICING SETTINGS
 # ==============================================================================
 with tab_admin:
-    st.header("⚙️ Centralized Pricing Configuration")
-    st.caption("Change the single authoritative price. Updates take effect immediately without modifying source code.")
+    st.subheader("⚙️ Centralized Pricing Configuration")
+    st.caption("Change the single authoritative price. Updates take effect immediately for all new analyses.")
 
     current_price, current_currency = get_pricing()
-
     st.write(f"**Current Authoritative Price:** `${current_price:.2f} {current_currency}`")
 
-    # Admin Authentication
     admin_auth = False
     if "auth_user" in st.session_state and st.session_state.auth_user and st.session_state.auth_user.get("role") == "admin":
         admin_auth = True
@@ -414,7 +501,7 @@ with tab_admin:
             if btn_update_price:
                 saved_price, saved_curr = set_pricing(new_price_val, new_currency_val)
                 st.success(f"✅ Price updated to **${saved_price:.2f} {saved_curr}**!")
-                st.info("All new guest analyses, Stripe checkouts, and company charges will now use this price. Historical records remain unchanged.")
+                st.info("All new analyses will now use this price. Historical records remain unchanged.")
                 st.rerun()
     else:
         st.info("Please enter the administrator key to modify global pricing settings.")
