@@ -1,7 +1,6 @@
 import os
 import io
 import sys
-import base64
 import zipfile
 import tempfile
 import streamlit as st
@@ -51,397 +50,309 @@ st.set_page_config(
 # Custom Styling (Deep Maroon, Burnished Gold & Clean Professional Typography — No Emojis)
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
 
-    :root {
-        --brand-maroon: #3D1220;
-        --brand-maroon-dark: #240711;
-        --brand-maroon-light: #521A2C;
-        --brand-gold: #C9A24B;
-        --brand-gold-light: #FAF4E8;
-        --brand-gold-border: #E2CFAB;
-        --brand-ember: #D9531E;
-        --brand-ember-hover: #BF360C;
-        --bg-cream: #FAF7F2;
-        --bg-card: #FFFFFF;
-        --text-dark: #1F070E;
-        --text-muted: #5C4A50;
-    }
+:root {
+    --brand-maroon: #3D1220;
+    --brand-maroon-dark: #240711;
+    --brand-maroon-light: #521A2C;
+    --brand-gold: #C9A24B;
+    --brand-gold-light: #FAF4E8;
+    --brand-gold-border: #E2CFAB;
+    --brand-ember: #D9531E;
+    --brand-ember-hover: #BF360C;
+    --bg-cream: #FAF7F2;
+    --bg-card: #FFFFFF;
+    --text-dark: #1F070E;
+    --text-muted: #5C4A50;
+}
 
-    .stApp {
-        background-color: var(--bg-cream);
-        color: var(--text-dark);
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
+.stApp {
+    background-color: var(--bg-cream);
+    color: var(--text-dark);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
 
-    /* Top Brand Header */
-    .brand-top-container {
-        text-align: center;
-        padding-top: 0.5rem;
-        margin-bottom: 1.2rem;
-    }
+.gold-divider {
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, var(--brand-gold) 35%, var(--brand-gold) 65%, transparent 100%);
+    margin: 14px auto 20px auto;
+    width: 85%;
+    border: none;
+}
 
-    .brand-logo-text {
-        font-family: 'Cinzel', serif;
-        font-size: 2.1rem;
-        font-weight: 900;
-        letter-spacing: 0.08em;
-        color: var(--brand-maroon);
-        line-height: 1.1;
-        margin-top: 8px;
-    }
+/* Two-Column Hero Styling */
+.hero-pitch-title {
+    font-family: 'Cinzel', serif;
+    font-size: 2.1rem;
+    font-weight: 800;
+    color: var(--brand-maroon);
+    line-height: 1.2;
+    margin-bottom: 0.6rem;
+}
 
-    .brand-tagline-text {
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: var(--brand-gold);
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        margin-top: 4px;
-    }
+.hero-pitch-subtitle {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 1.2rem;
+}
 
-    .gold-divider {
-        height: 2px;
-        background: linear-gradient(90deg, transparent 0%, var(--brand-gold) 35%, var(--brand-gold) 65%, transparent 100%);
-        margin: 14px auto 20px auto;
-        width: 85%;
-        border: none;
-    }
+.price-pill {
+    display: inline-flex;
+    align-items: center;
+    background: var(--brand-maroon);
+    border: 2px solid var(--brand-gold);
+    border-radius: 30px;
+    padding: 8px 18px;
+    color: var(--brand-gold-light);
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin-bottom: 1.4rem;
+    box-shadow: 0 4px 12px rgba(61, 18, 32, 0.12);
+}
 
-    /* Two-Column Hero Styling */
-    .hero-pitch-title {
-        font-family: 'Cinzel', serif;
-        font-size: 2.1rem;
-        font-weight: 800;
-        color: var(--brand-maroon);
-        line-height: 1.2;
-        margin-bottom: 0.6rem;
-    }
+.price-pill b {
+    color: #FFFFFF;
+    font-size: 1.15rem;
+}
 
-    .hero-pitch-subtitle {
-        font-size: 1.05rem;
-        color: var(--text-muted);
-        line-height: 1.5;
-        margin-bottom: 1.2rem;
-    }
+/* Upload Zone */
+.upload-card-wrapper {
+    background: var(--bg-card);
+    border: 2px dashed var(--brand-gold);
+    border-radius: 12px;
+    padding: 22px 20px;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(61, 18, 32, 0.04);
+    transition: all 0.2s ease;
+}
 
-    .price-pill {
-        display: inline-flex;
-        align-items: center;
-        background: var(--brand-maroon);
-        border: 2px solid var(--brand-gold);
-        border-radius: 30px;
-        padding: 8px 18px;
-        color: var(--brand-gold-light);
-        font-weight: 700;
-        font-size: 1.05rem;
-        margin-bottom: 1.4rem;
-        box-shadow: 0 4px 12px rgba(61, 18, 32, 0.12);
-    }
+.upload-card-wrapper:hover {
+    border-color: var(--brand-ember);
+    box-shadow: 0 6px 20px rgba(217, 83, 30, 0.1);
+}
 
-    .price-pill b {
-        color: #FFFFFF;
-        font-size: 1.15rem;
-    }
+.upload-title {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--brand-maroon);
+    margin-bottom: 4px;
+}
 
-    /* Code Inspection Panel */
-    .code-fluency-container {
-        background: #180D12;
-        border: 1.5px solid var(--brand-gold-border);
-        border-radius: 10px;
-        padding: 14px 16px;
-        margin-top: 0.5rem;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
-        font-family: 'JetBrains Mono', monospace;
-    }
+.upload-sub {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
 
-    .code-fluency-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid #38202A;
-        padding-bottom: 8px;
-        margin-bottom: 10px;
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: var(--brand-gold);
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-    }
+.supported-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 10px;
+}
 
-    .code-fluency-body {
-        font-size: 0.82rem;
-        color: #E2D3D8;
-        line-height: 1.5;
-    }
+.badge-tag {
+    background: var(--brand-gold-light);
+    border: 1px solid var(--brand-gold-border);
+    color: var(--brand-maroon);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
 
-    .code-highlight-flaw {
-        color: #FF8A65;
-        background: rgba(217, 83, 30, 0.25);
-        padding: 2px 4px;
-        border-radius: 3px;
-    }
+/* Scan Result Box */
+.scan-summary-card {
+    background: #FFFFFF;
+    border: 1.5px solid var(--brand-gold-border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 1.2rem 0;
+    box-shadow: 0 3px 10px rgba(61, 18, 32, 0.05);
+}
 
-    .code-fluency-result {
-        margin-top: 10px;
-        padding-top: 8px;
-        border-top: 1px dashed #4D2837;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        font-size: 0.82rem;
-    }
+.scan-summary-header {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--brand-maroon);
+}
 
-    /* Upload Zone */
-    .upload-card-wrapper {
-        background: var(--bg-card);
-        border: 2px dashed var(--brand-gold);
-        border-radius: 12px;
-        padding: 22px 20px;
-        text-align: center;
-        box-shadow: 0 4px 16px rgba(61, 18, 32, 0.04);
-        transition: all 0.2s ease;
-    }
+.price-calculation-callout {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--brand-maroon);
+    background: var(--brand-gold-light);
+    padding: 10px 16px;
+    border-radius: 8px;
+    border-left: 5px solid var(--brand-gold);
+    margin: 12px 0;
+}
 
-    .upload-card-wrapper:hover {
-        border-color: var(--brand-ember);
-        box-shadow: 0 6px 20px rgba(217, 83, 30, 0.1);
-    }
+/* Hallmark Certificate Badge (Accuracy Confidence Score) */
+.hallmark-container {
+    background: linear-gradient(135deg, #FAF4E8 0%, #FFFFFF 100%);
+    border: 2px solid var(--brand-gold);
+    border-radius: 12px;
+    padding: 18px 24px;
+    margin: 1.5rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 16px rgba(201, 162, 75, 0.12);
+}
 
-    .upload-title {
-        font-family: 'Cinzel', serif;
-        font-weight: 700;
-        font-size: 1.2rem;
-        color: var(--brand-maroon);
-        margin-bottom: 4px;
-    }
+.hallmark-details h3 {
+    margin: 0;
+    font-family: 'Cinzel', serif;
+    font-size: 1.35rem;
+    color: var(--brand-maroon);
+}
 
-    .upload-sub {
-        font-size: 0.88rem;
-        color: var(--text-muted);
-        margin-bottom: 10px;
-    }
+.hallmark-details p {
+    margin: 2px 0 0 0;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+}
 
-    .supported-badges {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        justify-content: center;
-        margin-top: 10px;
-    }
+.confidence-chip {
+    padding: 6px 18px;
+    border-radius: 30px;
+    font-weight: 800;
+    font-size: 1.05rem;
+    letter-spacing: 0.02em;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
 
-    .badge-tag {
-        background: var(--brand-gold-light);
-        border: 1px solid var(--brand-gold-border);
-        color: var(--brand-maroon);
-        font-size: 0.75rem;
-        font-weight: 600;
-        padding: 3px 8px;
-        border-radius: 4px;
-    }
+.conf-high {
+    background: #E8F5E9;
+    color: #1B5E20;
+    border: 1.5px solid #81C784;
+}
 
-    /* Scan Result Box */
-    .scan-summary-card {
-        background: #FFFFFF;
-        border: 1.5px solid var(--brand-gold-border);
-        border-radius: 10px;
-        padding: 16px 20px;
-        margin: 1.2rem 0;
-        box-shadow: 0 3px 10px rgba(61, 18, 32, 0.05);
-    }
+.conf-mod {
+    background: #FFF8E1;
+    color: #F57F17;
+    border: 1.5px solid #FFD54F;
+}
 
-    .scan-summary-header {
-        font-weight: 700;
-        font-size: 1.05rem;
-        color: var(--brand-maroon);
-    }
+.conf-low {
+    background: #FFEBEE;
+    color: #B71C1C;
+    border: 1.5px solid #E57373;
+}
 
-    .price-calculation-callout {
-        font-size: 1.35rem;
-        font-weight: 800;
-        color: var(--brand-maroon);
-        background: var(--brand-gold-light);
-        padding: 10px 16px;
-        border-radius: 8px;
-        border-left: 5px solid var(--brand-gold);
-        margin: 12px 0;
-    }
+/* Primary Marketing / Checkout Button (Ember Highlight) */
+.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, var(--brand-ember) 0%, var(--brand-ember-hover) 100%) !important;
+    color: #FFFFFF !important;
+    font-weight: 800 !important;
+    font-size: 1.05rem !important;
+    letter-spacing: 0.02em !important;
+    border: 1.5px solid #FF8A65 !important;
+    border-radius: 8px !important;
+    padding: 0.75rem 2rem !important;
+    box-shadow: 0 6px 18px rgba(217, 83, 30, 0.25) !important;
+    transition: all 0.2s ease !important;
+    width: 100%;
+}
 
-    /* Hallmark Certificate Badge (Accuracy Confidence Score) */
-    .hallmark-container {
-        background: linear-gradient(135deg, #FAF4E8 0%, #FFFFFF 100%);
-        border: 2px solid var(--brand-gold);
-        border-radius: 12px;
-        padding: 18px 24px;
-        margin: 1.5rem 0;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: 0 4px 16px rgba(201, 162, 75, 0.12);
-    }
+.stButton > button[kind="primary"]:hover {
+    background: linear-gradient(135deg, #FF6D00 0%, #D9531E 100%) !important;
+    box-shadow: 0 8px 24px rgba(217, 83, 30, 0.38) !important;
+    transform: translateY(-1px);
+}
 
-    .hallmark-details h3 {
-        margin: 0;
-        font-family: 'Cinzel', serif;
-        font-size: 1.35rem;
-        color: var(--brand-maroon);
-    }
+/* In-Product Action Buttons */
+.stButton > button:not([kind="primary"]), div.stDownloadButton > button {
+    background: var(--brand-maroon) !important;
+    color: var(--brand-gold-light) !important;
+    font-weight: 600 !important;
+    font-size: 0.92rem !important;
+    border: 1px solid var(--brand-gold) !important;
+    border-radius: 6px !important;
+    padding: 0.5rem 1.2rem !important;
+    box-shadow: 0 2px 6px rgba(61, 18, 32, 0.1) !important;
+    transition: all 0.15s ease !important;
+    width: 100%;
+}
 
-    .hallmark-details p {
-        margin: 2px 0 0 0;
-        font-size: 0.88rem;
-        color: var(--text-muted);
-    }
+.stButton > button:not([kind="primary"]):hover, div.stDownloadButton > button:hover {
+    background: var(--brand-maroon-light) !important;
+    border-color: #FFFFFF !important;
+    color: #FFFFFF !important;
+}
 
-    .confidence-chip {
-        padding: 6px 18px;
-        border-radius: 30px;
-        font-weight: 800;
-        font-size: 1.05rem;
-        letter-spacing: 0.02em;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    }
+/* Tabs Navigation */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 12px;
+    border-bottom: 2px solid var(--brand-gold-border);
+    margin-bottom: 1.6rem;
+}
 
-    .conf-high {
-        background: #E8F5E9;
-        color: #1B5E20;
-        border: 1.5px solid #81C784;
-    }
+.stTabs [data-baseweb="tab"] {
+    font-weight: 600;
+    font-size: 0.98rem;
+    color: var(--text-muted);
+    padding: 10px 18px;
+    border-radius: 6px 6px 0 0;
+    background-color: transparent;
+}
 
-    .conf-mod {
-        background: #FFF8E1;
-        color: #F57F17;
-        border: 1.5px solid #FFD54F;
-    }
+.stTabs [aria-selected="true"] {
+    color: var(--brand-maroon) !important;
+    border-bottom: 3.5px solid var(--brand-gold) !important;
+    font-weight: 800 !important;
+}
 
-    .conf-low {
-        background: #FFEBEE;
-        color: #B71C1C;
-        border: 1.5px solid #E57373;
-    }
+/* Card Box */
+.info-card {
+    background-color: #FFFFFF;
+    border: 1px solid var(--brand-gold-border);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 1.2rem;
+    box-shadow: 0 2px 8px rgba(61, 18, 32, 0.03);
+}
 
-    /* Severity Tags */
-    .sev-tag {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        margin-right: 6px;
-    }
-    .sev-high { background: #FFEBEE; color: #C62828; border: 1px solid #FFCDD2; }
-    .sev-med { background: #FFF3E0; color: #D9531E; border: 1px solid #FFE0B2; }
-    .sev-low { background: #E3F2FD; color: #1565C0; border: 1px solid #BBDEFB; }
+.info-card h4 {
+    color: var(--brand-maroon);
+    margin-top: 0;
+    margin-bottom: 6px;
+    font-size: 1.05rem;
+}
 
-    /* Primary Marketing / Checkout Button (Ember Highlight) */
-    .stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, var(--brand-ember) 0%, var(--brand-ember-hover) 100%) !important;
-        color: #FFFFFF !important;
-        font-weight: 800 !important;
-        font-size: 1.05rem !important;
-        letter-spacing: 0.02em !important;
-        border: 1.5px solid #FF8A65 !important;
-        border-radius: 8px !important;
-        padding: 0.75rem 2rem !important;
-        box-shadow: 0 6px 18px rgba(217, 83, 30, 0.25) !important;
-        transition: all 0.2s ease !important;
-        width: 100%;
-    }
+.info-card p {
+    color: var(--text-muted);
+    font-size: 0.92rem;
+    line-height: 1.5;
+    margin-bottom: 0;
+}
 
-    .stButton > button[kind="primary"]:hover {
-        background: linear-gradient(135deg, #FF6D00 0%, #D9531E 100%) !important;
-        box-shadow: 0 8px 24px rgba(217, 83, 30, 0.38) !important;
-        transform: translateY(-1px);
-    }
+/* Report Card Container */
+.report-card {
+    background: #FFFFFF;
+    border: 1.5px solid var(--brand-gold-border);
+    border-radius: 10px;
+    padding: 24px;
+    margin-top: 1rem;
+    box-shadow: 0 4px 14px rgba(61, 18, 32, 0.05);
+}
 
-    /* In-Product Action Buttons */
-    .stButton > button:not([kind="primary"]), div.stDownloadButton > button {
-        background: var(--brand-maroon) !important;
-        color: var(--brand-gold-light) !important;
-        font-weight: 600 !important;
-        font-size: 0.92rem !important;
-        border: 1px solid var(--brand-gold) !important;
-        border-radius: 6px !important;
-        padding: 0.5rem 1.2rem !important;
-        box-shadow: 0 2px 6px rgba(61, 18, 32, 0.1) !important;
-        transition: all 0.15s ease !important;
-        width: 100%;
-    }
+.privacy-notice {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.86rem;
+    margin-top: 0.8rem;
+    margin-bottom: 1.2rem;
+}
 
-    .stButton > button:not([kind="primary"]):hover, div.stDownloadButton > button:hover {
-        background: var(--brand-maroon-light) !important;
-        border-color: #FFFFFF !important;
-        color: #FFFFFF !important;
-    }
-
-    /* Tabs Navigation */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 12px;
-        border-bottom: 2px solid var(--brand-gold-border);
-        margin-bottom: 1.6rem;
-    }
-
-    .stTabs [data-baseweb="tab"] {
-        font-weight: 600;
-        font-size: 0.98rem;
-        color: var(--text-muted);
-        padding: 10px 18px;
-        border-radius: 6px 6px 0 0;
-        background-color: transparent;
-    }
-
-    .stTabs [aria-selected="true"] {
-        color: var(--brand-maroon) !important;
-        border-bottom: 3.5px solid var(--brand-gold) !important;
-        font-weight: 800 !important;
-    }
-
-    /* Card Box */
-    .info-card {
-        background-color: #FFFFFF;
-        border: 1px solid var(--brand-gold-border);
-        border-radius: 10px;
-        padding: 18px 20px;
-        margin-bottom: 1.2rem;
-        box-shadow: 0 2px 8px rgba(61, 18, 32, 0.03);
-    }
-
-    .info-card h4 {
-        color: var(--brand-maroon);
-        margin-top: 0;
-        margin-bottom: 6px;
-        font-size: 1.05rem;
-    }
-
-    .info-card p {
-        color: var(--text-muted);
-        font-size: 0.92rem;
-        line-height: 1.5;
-        margin-bottom: 0;
-    }
-
-    /* Report Card Container */
-    .report-card {
-        background: #FFFFFF;
-        border: 1.5px solid var(--brand-gold-border);
-        border-radius: 10px;
-        padding: 24px;
-        margin-top: 1rem;
-        box-shadow: 0 4px 14px rgba(61, 18, 32, 0.05);
-    }
-
-    .privacy-notice {
-        text-align: center;
-        color: var(--text-muted);
-        font-size: 0.86rem;
-        margin-top: 0.8rem;
-        margin-bottom: 1.2rem;
-    }
-
-    header {visibility: hidden;}
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
+header {visibility: hidden;}
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -547,26 +458,17 @@ RETURN
 }
 
 
-# --- BASE64 LOGO HELPER FOR GUARANTEED HEADER DISPLAY ---
-def get_logo_html():
-    logo_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo.png")
-    if os.path.exists(logo_file):
-        try:
-            with open(logo_file, "rb") as f:
-                b64 = base64.b64encode(f.read()).decode("utf-8")
-                return f'<img src="data:image/png;base64,{b64}" width="120" style="display: block; margin: 0 auto 8px auto; max-width: 120px;">'
-        except Exception:
-            pass
-    return ""
-
-
 # --- PROMINENT LOGO IN TOP HEADER ---
-st.markdown(f"""
-<div class="brand-top-container">
-    {get_logo_html()}
-    <div class="brand-logo-text">THE RAM & CHISEL</div>
-    <div class="brand-tagline-text">Precision Code Quality, Security & Documentation Audit</div>
-    <div class="gold-divider"></div>
+col_logo_l, col_logo_c, col_logo_r = st.columns([5, 2, 5])
+with col_logo_c:
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=115)
+
+st.markdown("""
+<div style="text-align: center; margin-bottom: 1.2rem;">
+<div style="font-family: 'Cinzel', serif; font-size: 2.1rem; font-weight: 900; letter-spacing: 0.08em; color: #3D1220; line-height: 1.1; margin-top: 6px;">THE RAM & CHISEL</div>
+<div style="font-size: 0.85rem; font-weight: 700; color: #C9A24B; text-transform: uppercase; letter-spacing: 0.16em; margin-top: 4px;">Precision Code Quality, Security & Documentation Audit</div>
+<hr style="height: 2px; background: linear-gradient(90deg, transparent 0%, #C9A24B 35%, #C9A24B 65%, transparent 100%); margin: 14px auto 20px auto; width: 85%; border: none;">
 </div>
 """, unsafe_allow_html=True)
 
@@ -698,19 +600,7 @@ with tab_analyze:
     with col_pitch:
         st.markdown('<div class="hero-pitch-title">Precision Craftsmanship Applied to Code Audits</div>', unsafe_allow_html=True)
         st.markdown('<div class="hero-pitch-subtitle">Submit raw source code or legacy projects. Receive rigorous security evaluations, architectural insights, and certified PDF documentation.</div>', unsafe_allow_html=True)
-        
         st.markdown(f'<div class="price-pill"><b>{unit_price_display} per analyzed file</b> &nbsp;•&nbsp; No subscription. No account needed.</div>', unsafe_allow_html=True)
-
-        st.markdown("""
-        <div class="info-card" style="margin-top: 0.5rem;">
-            <h4>Automated Static Inspection</h4>
-            <p>Evaluates AST structure, cyclomatic complexity, unparameterized queries, and dangerous execution patterns in memory.</p>
-        </div>
-        <div class="info-card">
-            <h4>7-Section Canonical Documentation</h4>
-            <p>Every file receives a complete overview, business logic breakdown, input/output analysis, dependencies, and actionable recommendations.</p>
-        </div>
-        """, unsafe_allow_html=True)
 
     with col_upload:
         st.markdown("""
@@ -972,7 +862,7 @@ with tab_security:
 
 
 # ==============================================================================
-# 5. SIGN IN & ORGANIZATION PORTAL / ADMIN PRICING
+# 5. SIGN IN (PERSONAL & TEAM PORTAL / ADMIN PRICING)
 # ==============================================================================
 with tab_signin:
     if "auth_user" not in st.session_state:
@@ -980,13 +870,13 @@ with tab_signin:
 
     if not st.session_state.auth_user:
         st.subheader("Account Sign In")
-        st.caption("Sign in to access your organization portal or administrative settings.")
+        st.caption("Sign in to your personal developer account, organization portal, or administrative panel.")
 
-        auth_choice = st.radio("Select action:", ["Organization Sign In", "Register New Organization", "Administrator Access"], horizontal=True)
+        auth_choice = st.radio("Select option:", ["Sign In (Personal or Team)", "Create Account", "Administrator Access"], horizontal=True)
 
-        if auth_choice == "Organization Sign In":
-            with st.form("form_org_login"):
-                login_email = st.text_input("Work Email")
+        if auth_choice == "Sign In (Personal or Team)":
+            with st.form("form_login"):
+                login_email = st.text_input("Email Address")
                 login_pass = st.text_input("Password", type="password")
                 btn_login = st.form_submit_button("Sign In")
 
@@ -999,30 +889,37 @@ with tab_signin:
                     else:
                         st.error("Invalid email or password.")
 
-        elif auth_choice == "Register New Organization":
-            with st.form("form_org_reg"):
-                org_name = st.text_input("Organization Name", placeholder="Acme Financial Engineering")
-                admin_email = st.text_input("Admin Work Email")
-                admin_pass = st.text_input("Admin Password", type="password")
-                btn_reg = st.form_submit_button("Create Account")
+        elif auth_choice == "Create Account":
+            with st.form("form_register"):
+                acc_type = st.radio("Account Type:", ["Personal Account", "Team / Organization"], horizontal=True)
+                org_name = ""
+                if acc_type == "Team / Organization":
+                    org_name = st.text_input("Organization Name", placeholder="Acme Financial Engineering")
+                reg_email = st.text_input("Email Address")
+                reg_pass = st.text_input("Password", type="password")
+                btn_reg = st.form_submit_button("Register Account")
 
                 if btn_reg:
-                    if org_name and admin_email and admin_pass:
+                    if reg_email and reg_pass:
                         try:
-                            new_org = create_organization(name=org_name)
+                            org_id = None
+                            if acc_type == "Team / Organization" and org_name:
+                                new_org = create_organization(name=org_name)
+                                org_id = new_org.id
+                            
                             new_user = create_user(
-                                email=admin_email,
-                                password=admin_pass,
-                                organization_id=new_org.id,
-                                role="admin"
+                                email=reg_email,
+                                password=reg_pass,
+                                organization_id=org_id,
+                                role="admin" if org_id else "user"
                             )
                             st.session_state.auth_user = {
                                 "id": new_user.id,
                                 "email": new_user.email,
-                                "organization_id": new_org.id,
+                                "organization_id": org_id,
                                 "role": new_user.role
                             }
-                            st.success(f"Organization '{org_name}' registered successfully.")
+                            st.success(f"Account registered successfully.")
                             st.rerun()
                         except Exception as e:
                             st.error(f"Registration failed: {str(e)}")
@@ -1059,9 +956,12 @@ with tab_signin:
             if is_superadmin:
                 st.subheader("System Administration")
                 st.caption(f"Authenticated as **Administrator**")
-            else:
-                st.subheader(f"{org.name if org else 'Organization Portal'}")
+            elif org:
+                st.subheader(f"{org.name}")
                 st.caption(f"User: **{user['email']}** &nbsp;|&nbsp; Role: **{user['role'].capitalize()}**")
+            else:
+                st.subheader("Personal Account Dashboard")
+                st.caption(f"User: **{user['email']}**")
         with header_col2:
             if st.button("Sign Out", key="btn_signout"):
                 st.session_state.auth_user = None
