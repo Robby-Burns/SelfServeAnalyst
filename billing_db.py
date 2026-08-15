@@ -71,7 +71,7 @@ class Analysis(Base):
     # Valid statuses: 'pending_payment', 'paid', 'processing', 'completed', 'payment_failed', 'failed'
 
     file_count = Column(Integer, nullable=False, default=1)
-    unit_price = Column(Float, nullable=False, default=15.00)  # Snapshot of unit price per file
+    unit_price = Column(Float, nullable=False, default=5.00)  # Snapshot of unit price per file
     price = Column(Float, nullable=False)  # TOTAL price (file_count * unit_price)
     currency = Column(String(10), nullable=False, default="USD")
 
@@ -95,7 +95,7 @@ class FileAnalysis(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     analysis_id = Column(String(36), ForeignKey("analyses.id"), nullable=False)
     filename = Column(String(255), nullable=False)
-    price = Column(Float, nullable=False, default=15.00)  # Unit price snapshot
+    price = Column(Float, nullable=False, default=5.00)  # Unit price snapshot
     currency = Column(String(10), nullable=False, default="USD")
     status = Column(String(50), nullable=False, default="pending")  # 'pending', 'completed', 'failed'
     markdown_report = Column(String, nullable=True)
