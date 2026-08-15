@@ -12,3 +12,7 @@ pandas
 matplotlib
 seaborn
 scikit-learn
+stripe
+reportlab
+bcrypt
+radon
