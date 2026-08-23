@@ -195,7 +195,21 @@ def get_session():
 # --- Centralized Pricing Helpers ---
 
 def get_pricing():
-    """Returns the single authoritative (analysis_price, currency)."""
+    """Returns the single authoritative (analysis_price, currency), checking config.yaml first."""
+    # Check config.yaml in project directory
+    config_yaml_path = os.path.join(os.path.dirname(__file__), "config.yaml")
+    if os.path.exists(config_yaml_path):
+        try:
+            import yaml
+            with open(config_yaml_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+                if data and "pricing" in data:
+                    price = float(data["pricing"].get("analysis_price_per_file", 5.00))
+                    currency = str(data["pricing"].get("currency", "USD")).upper()
+                    return price, currency
+        except Exception:
+            pass
+
     session = get_session()
     try:
         config = session.query(PricingConfig).first()
@@ -491,6 +505,45 @@ def get_org_usage(org_id: str):
                 "report_filename": a.report_filename
             }
             for a in analyses[:20]
+        ]
+
+        return {
+            "analyses_count": analyses_count,
+            "current_price": current_price,
+            "currency": currency,
+            "total_usage_amount": round(total_usage_amount, 2),
+            "recent_analyses": recent_analyses
+        }
+    finally:
+        session.close()
+
+
+def get_user_usage(user_id: str):
+    """Calculates aggregate usage and retrieves past billing/audit records for a user."""
+    session = get_session()
+    try:
+        current_price, currency = get_pricing()
+
+        analyses = session.query(Analysis).filter(
+            Analysis.user_id == user_id
+        ).order_by(desc(Analysis.created_at)).all()
+
+        completed_analyses = [a for a in analyses if a.status in ["paid", "processing", "completed"]]
+        analyses_count = len(completed_analyses)
+        total_usage_amount = sum(a.price for a in completed_analyses)
+
+        recent_analyses = [
+            {
+                "id": a.id,
+                "price": a.price,
+                "file_count": a.file_count,
+                "currency": a.currency,
+                "status": a.status,
+                "created_at": a.created_at.strftime("%Y-%m-%d %H:%M:%S") if a.created_at else "",
+                "report_filename": a.report_filename,
+                "zip_filename": a.zip_filename
+            }
+            for a in analyses[:30]
         ]
 
         return {

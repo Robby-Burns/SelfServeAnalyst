@@ -1,0 +1,14 @@
+# ==============================================================================
+# THE RAM & CHISEL — SYSTEM & PRICING CONFIGURATION
+# Edit this backend YAML file to adjust authoritative pricing and defaults.
+# Changes take effect immediately across the platform upon saving.
+# ==============================================================================
+
+pricing:
+  analysis_price_per_file: 5.00
+  currency: "USD"
+
+system:
+  app_name: "The Ram & Chisel"
+  tagline: "Precision Code Quality, Security & Documentation Audit"
+  default_model: "openai/gpt-4o"

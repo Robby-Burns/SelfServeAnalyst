@@ -27,7 +27,8 @@ from billing_db import (
     get_analysis_files,
     update_file_analysis,
     update_analysis_status,
-    get_org_usage
+    get_org_usage,
+    get_user_usage
 )
 from stripe_service import (
     is_stripe_configured,
@@ -607,7 +608,7 @@ with tab_analyze:
     with col_pitch:
         st.markdown('<div class="hero-pitch-title">Precision Craftsmanship Applied to Code Audits</div>', unsafe_allow_html=True)
         st.markdown('<div class="hero-pitch-subtitle">Submit raw source code or legacy projects. Receive rigorous security evaluations, architectural insights, and certified PDF documentation.</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="price-pill"><b>{unit_price_display} per analyzed file</b> &nbsp;•&nbsp; No subscription. No account needed.</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="price-pill"><b>{unit_price_display} per analyzed file</b> &nbsp;•&nbsp; Transparent Batch Billing &nbsp;•&nbsp; No Subscription Lock-In</div>', unsafe_allow_html=True)
         
         st.markdown("""
 <div class="info-card" style="margin-top: 0.6rem;">
@@ -707,9 +708,13 @@ with tab_analyze:
             # High-Impact Checkout Button
             btn_label = f"Analyze {billable_count} File{'s' if billable_count > 1 else ''} — {total_price_formatted}"
             if st.button(btn_label, type="primary", key="btn_pay_job"):
+                logged_in = st.session_state.get("auth_user")
+                cur_user_id = logged_in.get("id") if (logged_in and logged_in.get("id") != 0) else None
+                cur_org_id = logged_in.get("organization_id") if logged_in else None
+
                 analysis_rec = create_analysis_record(
-                    user_id=None,
-                    org_id=None,
+                    user_id=cur_user_id,
+                    org_id=cur_org_id,
                     file_count=billable_count,
                     filenames=list(analyzable_files.keys())
                 )
@@ -884,11 +889,11 @@ with tab_signin:
 
     if not st.session_state.auth_user:
         st.subheader("Account Sign In")
-        st.caption("Sign in to your personal developer account, organization portal, or administrative panel.")
+        st.caption("Sign in to your personal developer account or your company organization portal.")
 
-        auth_choice = st.radio("Select option:", ["Sign In (Personal or Team)", "Create Account", "Administrator Access"], horizontal=True)
+        auth_choice = st.radio("Select option:", ["Sign In", "Create Account"], horizontal=True)
 
-        if auth_choice == "Sign In (Personal or Team)":
+        if auth_choice == "Sign In":
             with st.form("form_login"):
                 login_email = st.text_input("Email Address")
                 login_pass = st.text_input("Password", type="password")
@@ -905,11 +910,17 @@ with tab_signin:
 
         elif auth_choice == "Create Account":
             with st.form("form_register"):
-                acc_type = st.radio("Account Type:", ["Personal Account", "Team / Organization"], horizontal=True)
+                acc_type = st.radio(
+                    "Account Type:",
+                    ["Personal Developer Account", "Company / Organization Account (Team Portal & Shared Billing)"],
+                    horizontal=True
+                )
                 org_name = ""
-                if acc_type == "Team / Organization":
-                    org_name = st.text_input("Organization Name", placeholder="Acme Financial Engineering")
-                reg_email = st.text_input("Email Address")
+                if "Organization" in acc_type:
+                    org_name = st.text_input("Company / Organization Name", placeholder="Acme Engineering Corp")
+                    st.caption("As the organization creator, you will be assigned as the **Company Administrator** with team management and billing access.")
+                
+                reg_email = st.text_input("Work Email Address")
                 reg_pass = st.text_input("Password", type="password")
                 btn_reg = st.form_submit_button("Register Account")
 
@@ -917,12 +928,15 @@ with tab_signin:
                     if reg_email and reg_pass:
                         try:
                             org_id = None
-                            if acc_type == "Team / Organization" and org_name:
-                                new_org = create_organization(name=org_name)
+                            if "Organization" in acc_type:
+                                if not org_name.strip():
+                                    st.warning("Please provide an Organization Name.")
+                                    st.stop()
+                                new_org = create_organization(name=org_name.strip())
                                 org_id = new_org.id
-                            
+
                             new_user = create_user(
-                                email=reg_email,
+                                email=reg_email.strip(),
                                 password=reg_pass,
                                 organization_id=org_id,
                                 role="admin" if org_id else "user"
@@ -940,39 +954,16 @@ with tab_signin:
                     else:
                         st.warning("Please complete all required fields.")
 
-        else:
-            st.write("**Administrative Pricing & System Access**")
-            with st.form("form_admin_login"):
-                admin_key = st.text_input("Administrator Access Key", type="password")
-                btn_admin_login = st.form_submit_button("Verify Admin Key")
-
-                if btn_admin_login:
-                    configured_key = os.getenv("ADMIN_PASSWORD", "admin123")
-                    if admin_key == configured_key:
-                        st.session_state.auth_user = {
-                            "id": 0,
-                            "email": "admin@system",
-                            "organization_id": None,
-                            "role": "superadmin"
-                        }
-                        st.success("Administrator access granted.")
-                        st.rerun()
-                    else:
-                        st.error("Invalid administrator key.")
-
     else:
         user = st.session_state.auth_user
-        is_superadmin = user.get("role") == "superadmin"
         org = get_organization(user["organization_id"]) if user.get("organization_id") else None
 
         header_col1, header_col2 = st.columns([3, 1])
         with header_col1:
-            if is_superadmin:
-                st.subheader("System Administration")
-                st.caption(f"Authenticated as **Administrator**")
-            elif org:
+            if org:
+                role_title = "Company Administrator" if user.get("role") == "admin" else "Team Member"
                 st.subheader(f"{org.name}")
-                st.caption(f"User: **{user['email']}** &nbsp;|&nbsp; Role: **{user['role'].capitalize()}**")
+                st.caption(f"User: **{user['email']}** &nbsp;|&nbsp; Role: **{role_title}**")
             else:
                 st.subheader("Personal Account Dashboard")
                 st.caption(f"User: **{user['email']}**")
@@ -983,72 +974,155 @@ with tab_signin:
 
         st.markdown("<hr class='gold-divider'>", unsafe_allow_html=True)
 
-        # Admin Centralized Pricing Controls
-        if is_superadmin or user.get("role") == "admin":
-            st.subheader("Centralized Authoritative Pricing")
-            st.caption("Change the base price per analyzed file. Updates take effect immediately across the application.")
+        # ----------------------------------------------------------------------
+        # A. COMPANY / ORGANIZATION DASHBOARD
+        # ----------------------------------------------------------------------
+        if org:
+            # 1. Organization Usage & Billing Metrics
+            st.subheader("Organization Billing & Audit Usage")
+            st.caption("Shared billing metrics and completed team audits.")
 
-            curr_price, curr_currency = get_pricing()
-            st.write(f"Current Base Price: **${curr_price:.2f} {curr_currency}** per file")
-
-            with st.form("form_update_pricing"):
-                new_price = st.number_input("Analysis Price Per File", min_value=1.0, max_value=1000.0, value=float(curr_price), step=1.0, format="%.2f")
-                new_curr = st.selectbox("Currency", ["USD", "EUR", "GBP", "CAD", "AUD"], index=["USD", "EUR", "GBP", "CAD", "AUD"].index(curr_currency) if curr_currency in ["USD", "EUR", "GBP", "CAD", "AUD"] else 0)
-                btn_save_price = st.form_submit_button("Update Global Price")
-
-                if btn_save_price:
-                    p, c = set_pricing(new_price, new_curr)
-                    st.success(f"Price updated to **${p:.2f} {c} per file**! Public page and checkout sessions immediately reflect this price.")
-                    st.rerun()
-
-        # Organization Team Portal Features
-        if user.get("organization_id"):
-            st.markdown("<hr class='gold-divider'>", unsafe_allow_html=True)
-            st.subheader("Submit Code for Team Audit")
-            org_file = st.file_uploader("Upload team source file:", type=["py", "sql", "dax", "js", "ts", "cpp", "txt", "json"], key="org_file_upload")
-
-            if org_file:
-                file_content = org_file.getvalue().decode("utf-8", errors="ignore")
-                if st.button(f"Run Team Audit ({unit_price_display})", type="primary", key="btn_team_audit"):
-                    analysis_rec = create_analysis_record(user_id=user["id"], org_id=user["organization_id"], file_count=1, filenames=[org_file.name])
-                    with st.spinner("Processing team analysis..."):
-                        charge_res = charge_organization_analysis(org_id=user["organization_id"], analysis_id=analysis_rec.id)
-                        if charge_res.get("success"):
-                            metrics = CodeAnalyzer.analyze_source_code(file_content, filename=org_file.name)
-                            pdf_path = generate_analysis_pdf(analysis_id=analysis_rec.id, analysis_metrics=metrics, price_charged=analysis_rec.price, currency=analysis_rec.currency)
-                            update_analysis_status(analysis_rec.id, "completed", report_filename=pdf_path)
-                            st.success("Analysis complete.")
-                            with open(pdf_path, "rb") as f:
-                                st.download_button(label="Download PDF Report", data=f.read(), file_name=os.path.basename(pdf_path), mime="application/pdf")
-                        else:
-                            st.error(f"Payment failed: {charge_res.get('error', 'Card error')}")
-
-            st.markdown("<hr class='gold-divider'>", unsafe_allow_html=True)
-            st.subheader("Organization Usage")
             usage = get_org_usage(user["organization_id"])
             u1, u2, u3 = st.columns(3)
             with u1:
-                st.metric("Jobs Completed", usage["analyses_count"])
+                st.metric("Audits Completed", usage["analyses_count"])
             with u2:
                 st.metric("Rate Per File", f"${usage['current_price']:.2f} {usage['currency']}")
             with u3:
                 st.metric("Total Billed", f"${usage['total_usage_amount']:.2f} {usage['currency']}")
 
+            recent_org_analyses = usage.get("recent_analyses", [])
+            if recent_org_analyses:
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.write("##### Recent Organization Audits & Invoices")
+                for item in recent_org_analyses:
+                    with st.container():
+                        c_date, c_amt, c_status, c_action = st.columns([3, 2, 2, 3])
+                        with c_date:
+                            st.write(f"**Date:** {item['created_at']}")
+                            st.caption(f"Job ID: `{item['id'][:8]}...`")
+                        with c_amt:
+                            st.write(f"**${item['price']:.2f} {item['currency']}**")
+                        with c_status:
+                            st.markdown("<span style='color:#2e7d32; font-weight:600;'>Paid & Completed</span>", unsafe_allow_html=True)
+                        with c_action:
+                            if item.get("report_filename") and os.path.exists(item["report_filename"]):
+                                with open(item["report_filename"], "rb") as f_rep:
+                                    st.download_button(
+                                        label="Download PDF Report",
+                                        data=f_rep.read(),
+                                        file_name=os.path.basename(item["report_filename"]),
+                                        mime="application/pdf",
+                                        key=f"dl_org_pdf_{item['id']}"
+                                    )
+                            else:
+                                st.caption("Report archived")
+                        st.markdown("<hr style='margin: 0.5rem 0; border: none; border-top: 1px dashed #d1c7b7;'>", unsafe_allow_html=True)
+
+            # 2. Team Code Audit Runner
+            st.markdown("<hr class='gold-divider'>", unsafe_allow_html=True)
+            st.subheader("Run Team Code Audit")
+            st.caption("Submit source code for analysis charged directly to your organization billing account.")
+
+            org_file = st.file_uploader("Upload source file:", type=["py", "sql", "dax", "js", "ts", "cpp", "txt", "json"], key="org_file_upload")
+            if org_file:
+                file_content = org_file.getvalue().decode("utf-8", errors="ignore")
+                if st.button(f"Run Audit on {org_file.name} ({unit_price_display})", type="primary", key="btn_team_audit"):
+                    analysis_rec = create_analysis_record(user_id=user["id"], org_id=user["organization_id"], file_count=1, filenames=[org_file.name])
+                    with st.spinner("Executing precision code audit..."):
+                        charge_res = charge_organization_analysis(org_id=user["organization_id"], analysis_id=analysis_rec.id)
+                        if charge_res.get("success"):
+                            metrics = CodeAnalyzer.analyze_source_code(file_content, filename=org_file.name)
+                            pdf_path = generate_analysis_pdf(analysis_id=analysis_rec.id, analysis_metrics=metrics, price_charged=analysis_rec.price, currency=analysis_rec.currency)
+                            update_analysis_status(analysis_rec.id, "completed", report_filename=pdf_path)
+                            st.success("Audit complete.")
+                            with open(pdf_path, "rb") as f:
+                                st.download_button(label="Download PDF Report", data=f.read(), file_name=os.path.basename(pdf_path), mime="application/pdf")
+                        else:
+                            st.error(f"Payment failed: {charge_res.get('error', 'Card error')}")
+
+            # 3. Company Administrator: Team Members Management
             if user.get("role") == "admin":
                 st.markdown("<hr class='gold-divider'>", unsafe_allow_html=True)
-                st.subheader("Team Members")
+                st.subheader("Team Management")
+                st.caption("Add team members so they can run code audits under your organization.")
+
                 with st.form("form_add_member"):
-                    new_email = st.text_input("Member Email")
+                    new_email = st.text_input("New Member Work Email")
                     new_pw = st.text_input("Temporary Password", type="password")
-                    if st.form_submit_button("Add Member") and new_email and new_pw:
+                    if st.form_submit_button("Add Team Member") and new_email and new_pw:
                         try:
-                            create_user(email=new_email, password=new_pw, organization_id=user["organization_id"], role="member")
-                            st.success(f"Added {new_email}")
+                            create_user(email=new_email.strip(), password=new_pw, organization_id=user["organization_id"], role="member")
+                            st.success(f"Added member: {new_email}")
                             st.rerun()
                         except Exception as e:
                             st.error(str(e))
 
                 members = get_org_users(user["organization_id"])
                 if members:
+                    st.write("##### Active Team Members")
                     for m in members:
-                        st.write(f"- {m['email']} *({m['role']})*")
+                        role_tag = "👑 Administrator" if m["role"] == "admin" else "👤 Member"
+                        st.write(f"- **{m['email']}** &nbsp;—&nbsp; *{role_tag}*")
+
+        # ----------------------------------------------------------------------
+        # B. PERSONAL ACCOUNT DASHBOARD
+        # ----------------------------------------------------------------------
+        else:
+            st.subheader("Your Billing & Audit History")
+            st.caption("Review your completed code quality audits, Stripe payment records, and download previous PDF reports.")
+
+            user_usage = get_user_usage(user["id"])
+            u1, u2, u3 = st.columns(3)
+            with u1:
+                st.metric("Audits Completed", user_usage["analyses_count"])
+            with u2:
+                st.metric("Standard Rate", f"${user_usage['current_price']:.2f} {user_usage['currency']}")
+            with u3:
+                st.metric("Total Spent", f"${user_usage['total_usage_amount']:.2f} {user_usage['currency']}")
+
+            recent = user_usage.get("recent_analyses", [])
+            if recent:
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.write("##### Recent Invoices & Audits")
+                for item in recent:
+                    with st.container():
+                        col_date, col_files, col_amt, col_status, col_action = st.columns([2.5, 1.5, 1.5, 2, 2.5])
+                        with col_date:
+                            st.write(f"**Date:** {item['created_at']}")
+                            st.caption(f"Job ID: `{item['id'][:8]}...`")
+                        with col_files:
+                            st.write(f"**Files:** {item['file_count']}")
+                        with col_amt:
+                            st.write(f"**${item['price']:.2f} {item['currency']}**")
+                        with col_status:
+                            if item['status'] == 'completed':
+                                st.markdown("<span style='color:#2e7d32; font-weight:600;'>Paid & Completed</span>", unsafe_allow_html=True)
+                            elif item['status'] == 'pending_payment':
+                                st.markdown("<span style='color:#e65100; font-weight:600;'>Pending Payment</span>", unsafe_allow_html=True)
+                            else:
+                                st.write(item['status'].capitalize())
+                        with col_action:
+                            if item.get("report_filename") and os.path.exists(item["report_filename"]):
+                                with open(item["report_filename"], "rb") as f_rep:
+                                    st.download_button(
+                                        label="Download PDF",
+                                        data=f_rep.read(),
+                                        file_name=os.path.basename(item["report_filename"]),
+                                        mime="application/pdf",
+                                        key=f"dl_user_pdf_{item['id']}"
+                                    )
+                            elif item.get("zip_filename") and os.path.exists(item["zip_filename"]):
+                                with open(item["zip_filename"], "rb") as f_zip:
+                                    st.download_button(
+                                        label="Download ZIP",
+                                        data=f_zip.read(),
+                                        file_name=os.path.basename(item["zip_filename"]),
+                                        mime="application/zip",
+                                        key=f"dl_user_zip_{item['id']}"
+                                    )
+                            else:
+                                st.caption("No report available")
+                        st.markdown("<hr style='margin: 0.5rem 0; border: none; border-top: 1px dashed #d1c7b7;'>", unsafe_allow_html=True)
+            else:
+                st.info("No billing or audit history yet. Upload your source files in the **Analyze Code** tab to run your first audit.")
