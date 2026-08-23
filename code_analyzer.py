@@ -262,7 +262,7 @@ class CodeAnalyzer:
         total_loc = metrics.get("total_loc", 0)
         code_loc = metrics.get("code_loc", 0)
         complexity = metrics.get("complexity_score", 1.0)
-        confidence_score = quality_score
+        confidence_score = metrics.get("quality_score", 100)
         confidence_tier = "High Confidence" if confidence_score >= 80 else ("Moderate Confidence" if confidence_score >= 60 else "Review Required")
 
         md = []
