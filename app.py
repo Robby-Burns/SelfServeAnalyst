@@ -35,6 +35,7 @@ from stripe_service import (
     create_guest_checkout_session,
     verify_checkout_session,
     setup_organization_billing_session,
+    verify_setup_session,
     charge_organization_analysis
 )
 from code_analyzer import CodeAnalyzer, SUPPORTED_EXTENSIONS, IGNORED_PATTERNS
@@ -503,6 +504,15 @@ with tab_analyze:
     # Check for Stripe payment return session
     query_params = st.query_params
     return_session_id = query_params.get("session_id")
+    return_setup_id = query_params.get("setup_session_id")
+
+    if return_setup_id:
+        st.info("Verifying corporate payment method with Stripe...")
+        setup_verif = verify_setup_session(return_setup_id)
+        if setup_verif.get("success"):
+            st.success("Corporate payment method saved and synced successfully!")
+        else:
+            st.error(f"Could not link payment method: {setup_verif.get('error')}")
 
     if return_session_id:
         st.info("Verifying payment confirmation with Stripe...")
@@ -1041,8 +1051,35 @@ with tab_signin:
                         else:
                             st.error(f"Payment failed: {charge_res.get('error', 'Card error')}")
 
-            # 3. Company Administrator: Team Members Management
+            # 3. Company Administrator: Payment Method & Team Members Management
             if user.get("role") == "admin":
+                st.markdown("<hr class='gold-divider'>", unsafe_allow_html=True)
+                st.subheader("Corporate Payment Method")
+                st.caption("Sync your company card with Stripe so team members can run code audits charged directly to your organization.")
+
+                has_card = bool(org.stripe_customer_id)
+                if has_card:
+                    st.markdown("<div style='background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:12px 16px; margin-bottom:12px; color:#166534;'><b>Active Payment Method Linked</b> — Team audits are charged automatically to your corporate card on file.</div>", unsafe_allow_html=True)
+                    btn_card_label = "Update Corporate Card (Stripe)"
+                else:
+                    st.markdown("<div style='background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:12px 16px; margin-bottom:12px; color:#92400e;'><b>No Corporate Card Linked</b> — Link a company card via Stripe to enable team code audits.</div>", unsafe_allow_html=True)
+                    btn_card_label = "Link Corporate Card (Stripe)"
+
+                if st.button(btn_card_label, key="btn_sync_card", type="primary" if not has_card else "secondary"):
+                    app_base_url = os.getenv("APP_URL", "http://localhost:8501")
+                    setup_res = setup_organization_billing_session(
+                        org_id=org.id,
+                        org_name=org.name,
+                        success_url=app_base_url,
+                        cancel_url=app_base_url
+                    )
+                    if setup_res.get("mock"):
+                        update_organization_stripe(org_id=org.id, stripe_customer_id=f"cus_mock_{org.id}")
+                        st.success("Corporate card linked successfully (Demo / Mock Mode)!")
+                        st.rerun()
+                    elif setup_res.get("url"):
+                        st.link_button("Proceed to Stripe to Save Card", setup_res["url"], type="primary")
+
                 st.markdown("<hr class='gold-divider'>", unsafe_allow_html=True)
                 st.subheader("Team Management")
                 st.caption("Add team members so they can run code audits under your organization.")

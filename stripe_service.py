@@ -260,3 +260,33 @@ def charge_organization_analysis(org_id: str, analysis_id: str) -> Dict[str, Any
     except Exception as e:
         update_analysis_status(analysis_id=analysis_id, status="payment_failed")
         return {"success": False, "error": str(e)}
+
+
+def verify_setup_session(setup_session_id: str) -> Dict[str, Any]:
+    """
+    Verifies that an organization's Stripe Setup session succeeded and persists the payment method.
+    """
+    if not is_stripe_configured():
+        return {"success": True, "mock": True}
+
+    try:
+        session = stripe.checkout.Session.retrieve(setup_session_id)
+        if session.status == "complete":
+            org_id = session.metadata.get("org_id")
+            setup_intent_id = session.setup_intent
+            customer_id = session.customer
+            payment_method_id = None
+            if setup_intent_id:
+                si = stripe.SetupIntent.retrieve(setup_intent_id)
+                payment_method_id = si.payment_method
+
+            if org_id and customer_id:
+                update_organization_stripe(
+                    org_id=org_id,
+                    stripe_customer_id=customer_id,
+                    payment_method_id=payment_method_id
+                )
+            return {"success": True, "org_id": org_id, "customer_id": customer_id}
+        return {"success": False, "error": f"Setup session status: {session.status}"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
