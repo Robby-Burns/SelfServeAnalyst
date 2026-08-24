@@ -25,6 +25,23 @@ def is_stripe_configured() -> bool:
     return bool(key and not key.startswith("your_") and not key.startswith("mock_"))
 
 
+def _get_metadata_dict(stripe_obj) -> dict:
+    """Safely extracts a metadata dictionary from any StripeObject or dict."""
+    if stripe_obj is None:
+        return {}
+    meta = getattr(stripe_obj, "metadata", None)
+    if meta is None:
+        return {}
+    if hasattr(meta, "to_dict"):
+        return meta.to_dict()
+    if isinstance(meta, dict):
+        return meta
+    try:
+        return dict(meta)
+    except Exception:
+        return {}
+
+
 def create_guest_checkout_session(
     analysis_id: str,
     success_url: str,
@@ -115,7 +132,8 @@ def verify_checkout_session(session_id: str) -> Dict[str, Any]:
 
     try:
         session = stripe.checkout.Session.retrieve(session_id)
-        analysis_id = session.metadata.get("analysis_id")
+        meta = _get_metadata_dict(session)
+        analysis_id = meta.get("analysis_id")
         if not analysis_id:
             return {"success": False, "error": "Missing analysis_id in session metadata"}
 
@@ -272,7 +290,8 @@ def verify_setup_session(setup_session_id: str) -> Dict[str, Any]:
     try:
         session = stripe.checkout.Session.retrieve(setup_session_id)
         if session.status == "complete":
-            org_id = session.metadata.get("org_id")
+            meta = _get_metadata_dict(session)
+            org_id = meta.get("org_id")
             setup_intent_id = session.setup_intent
             customer_id = session.customer
             payment_method_id = None
