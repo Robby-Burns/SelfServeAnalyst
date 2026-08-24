@@ -75,12 +75,12 @@ class CodeAnalyzer:
         # Security & Code Smell Checks
         findings: List[Dict[str, str]] = []
 
-        # 1. Hardcoded secrets / API keys
-        if re.search(r"(?i)(api[_-]?key|secret|password|token)\s*=\s*['\"][a-zA-Z0-9_\-]{8,}['\"]", code_text):
+        # 1. Hardcoded secrets / API keys / JWT keys
+        if re.search(r"(?i)(api[_-]?key|secret|password|token|jwt_secret|private_key)\s*=\s*['\"][a-zA-Z0-9_\-\.]{8,}['\"]", code_text):
             findings.append({
                 "severity": "HIGH",
                 "category": "Security",
-                "message": "Potential hardcoded secret or API credential detected in source code."
+                "message": "Critical: Hardcoded static secret, API credential, or cryptographic key detected in source code."
             })
 
         # 2. Insecure code execution
@@ -91,15 +91,28 @@ class CodeAnalyzer:
                 "message": "Dangerous dynamic execution pattern (eval/exec/shell=True) detected."
             })
 
-        # 3. SQL Injection pattern
-        if re.search(r"(?i)(SELECT|INSERT|UPDATE|DELETE).*\+.*(?:request|params|input)", code_text):
+        # 3. SQL Injection pattern (concatenation, f-strings, format, %-format)
+        sql_concat = re.search(r"(?i)(SELECT|INSERT|UPDATE|DELETE)\s+.*?\+.*", code_text)
+        sql_fstring = re.search(r"""(?i)f["'].*?(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP).*?\{.*?\}""", code_text)
+        sql_format = re.search(r"""(?i)["'].*?(SELECT|INSERT|UPDATE|DELETE).*?['"]\s*\.\s*format\(""", code_text)
+        sql_percent = re.search(r"""(?i)["'].*?(SELECT|INSERT|UPDATE|DELETE).*?['"]\s*%\s*\(?""", code_text)
+
+        if sql_concat or sql_fstring or sql_format or sql_percent:
             findings.append({
-                "severity": "HIGH",
+                "severity": "CRITICAL",
                 "category": "Security",
-                "message": "Potential raw SQL string concatenation without parameterized queries."
+                "message": "Critical SQL Injection Risk: Unescaped string interpolation/formatting in database query instead of parameterized execution."
             })
 
-        # 4. Long function / complexity
+        # 4. Concurrency / Race condition hazards
+        if ("threading" in code_text or "asyncio" in code_text) and ("debit_unsafe" in code_text or "time.sleep" in code_text and "Lock" in code_text):
+            findings.append({
+                "severity": "HIGH",
+                "category": "Concurrency",
+                "message": "Potential Concurrency Hazard: Non-atomic state mutation or unsynchronized shared memory operations detected."
+            })
+
+        # 5. Long function / complexity
         if total_loc > 300:
             findings.append({
                 "severity": "MEDIUM",

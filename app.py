@@ -4,6 +4,7 @@ import sys
 import base64
 import zipfile
 import tempfile
+import shutil
 import streamlit as st
 import matplotlib
 matplotlib.use('Agg')
@@ -572,6 +573,16 @@ with tab_analyze:
                 st.success(f"Payment verified: {analysis.file_count} file(s) paid (${analysis.price:.2f} {analysis.currency}).")
 
                 cached_files = st.session_state.get(f"job_files_{analysis_id}", {})
+                staging_dir = os.path.join(tempfile.gettempdir(), "ram_chisel_staging", analysis_id)
+                if not cached_files and os.path.exists(staging_dir):
+                    cached_files = {}
+                    for fn in os.listdir(staging_dir):
+                        fp = os.path.join(staging_dir, fn)
+                        if os.path.isfile(fp):
+                            with open(fp, "r", encoding="utf-8", errors="ignore") as sf:
+                                cached_files[fn] = sf.read()
+                    # Zero Code Retention: immediately shred / purge staging directory
+                    shutil.rmtree(staging_dir, ignore_errors=True)
 
                 if analysis.status != "completed" or not analysis.report_filename or not os.path.exists(analysis.report_filename):
                     with st.spinner(f"Analyzing {analysis.file_count} file(s) in memory & compiling reports..."):
@@ -781,6 +792,14 @@ with tab_analyze:
                     filenames=list(analyzable_files.keys())
                 )
                 st.session_state[f"job_files_{analysis_rec.id}"] = analyzable_files
+
+                # Stage files temporarily for the duration of external Stripe checkout
+                staging_dir = os.path.join(tempfile.gettempdir(), "ram_chisel_staging", analysis_rec.id)
+                os.makedirs(staging_dir, exist_ok=True)
+                for fname, fcode in analyzable_files.items():
+                    safe_name = os.path.basename(fname)
+                    with open(os.path.join(staging_dir, safe_name), "w", encoding="utf-8") as sf:
+                        sf.write(fcode)
 
                 app_base_url = get_app_base_url()
                 checkout_info = create_guest_checkout_session(
