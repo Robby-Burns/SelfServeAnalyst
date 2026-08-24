@@ -489,6 +489,30 @@ st.markdown(f"""
 unit_price, currency = get_pricing()
 unit_price_display = f"${unit_price:.2f} {currency}" if currency != "USD" else f"${unit_price:.0f}" if unit_price.is_integer() else f"${unit_price:.2f}"
 
+# --- SESSION STATE & PERSISTENT USER HEADER ---
+if "auth_user" not in st.session_state:
+    st.session_state.auth_user = None
+
+current_auth = st.session_state.get("auth_user")
+current_org = get_organization(current_auth["organization_id"]) if (current_auth and current_auth.get("organization_id")) else None
+
+if current_auth:
+    org_tag = f" &nbsp;•&nbsp; <b>{current_org.name}</b>" if current_org else " &nbsp;•&nbsp; Personal Account"
+    role_tag = f" <i>({current_auth.get('role').capitalize()})</i>" if current_auth.get("role") else ""
+    
+    top_c1, top_c2 = st.columns([5, 1])
+    with top_c1:
+        st.markdown(f"""
+        <div style="background: #FAF7F2; border: 1px solid #E5C378; border-radius: 8px; padding: 7px 14px; margin-bottom: 10px; font-size: 0.88rem; color: #3D1220;">
+            Signed in as: <b>{current_auth['email']}</b>{role_tag}{org_tag}
+        </div>
+        """, unsafe_allow_html=True)
+    with top_c2:
+        if st.button("Sign Out", key="top_global_signout"):
+            st.session_state.auth_user = None
+            st.rerun()
+
+signin_tab_label = "Dashboard & Account" if current_auth else "Sign In"
 
 # --- CLEAN NAVIGATION TABS (NO EMOJIS) ---
 tab_analyze, tab_preview, tab_how, tab_security, tab_signin = st.tabs([
@@ -496,7 +520,7 @@ tab_analyze, tab_preview, tab_how, tab_security, tab_signin = st.tabs([
     "Example Preview",
     "How It Works",
     "Security & Privacy",
-    "Sign In"
+    signin_tab_label
 ])
 
 
@@ -646,6 +670,12 @@ with tab_analyze:
             </div>
         </div>
         """, unsafe_allow_html=True)
+
+        if current_auth:
+            if current_org:
+                st.markdown(f"<div style='background:#FAF7F2; border:1px solid #E5C378; border-radius:6px; padding:6px 12px; margin-bottom:10px; font-size:0.84rem; color:#3D1220;'>🏢 Organization: <b>{current_org.name}</b> &nbsp;|&nbsp; Audits are attributed to your team account.</div>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"<div style='background:#FAF7F2; border:1px solid #E5C378; border-radius:6px; padding:6px 12px; margin-bottom:10px; font-size:0.84rem; color:#3D1220;'>👤 Personal Account: <b>{current_auth['email']}</b> &nbsp;|&nbsp; Reports will be saved to your account.</div>", unsafe_allow_html=True)
 
         uploaded_items = st.file_uploader(
             "Upload files or project folder (.zip)",
