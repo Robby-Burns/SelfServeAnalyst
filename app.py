@@ -43,6 +43,7 @@ from stripe_service import (
 )
 from code_analyzer import CodeAnalyzer, SUPPORTED_EXTENSIONS, IGNORED_PATTERNS
 from pdf_generator import generate_analysis_pdf, create_reports_zip, REPORTS_DIR
+from email_service import send_team_invite_email, is_email_configured
 
 # Initialize Database Schema & Authoritative Pricing ($5.00 default)
 init_db()
@@ -1120,10 +1121,23 @@ with tab_signin:
                 with st.form("form_add_member"):
                     new_email = st.text_input("New Member Work Email")
                     new_pw = st.text_input("Temporary Password", type="password")
-                    if st.form_submit_button("Add Team Member") and new_email and new_pw:
+                    if st.form_submit_button("Add Team Member & Send Invite") and new_email and new_pw:
                         try:
                             create_user(email=new_email.strip(), password=new_pw, organization_id=user["organization_id"], role="member")
-                            st.success(f"Added member: {new_email}")
+                            
+                            # Send automated branded invitation email
+                            email_res = send_team_invite_email(
+                                to_email=new_email.strip(),
+                                org_name=org.name,
+                                temp_password=new_pw,
+                                inviter_email=user["email"]
+                            )
+                            if email_res.get("success"):
+                                st.success(f"Added member **{new_email}** and sent invitation email via {email_res.get('provider').capitalize()}!")
+                            elif email_res.get("reason") == "no_provider":
+                                st.success(f"Added member **{new_email}**! (Account created immediately. Add `RESEND_API_KEY` to .env to automate outbound inbox delivery).")
+                            else:
+                                st.warning(f"Added member **{new_email}**, but email delivery failed: {email_res.get('error')}")
                             st.rerun()
                         except Exception as e:
                             st.error(str(e))
