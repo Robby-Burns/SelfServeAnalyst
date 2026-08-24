@@ -490,6 +490,24 @@ st.markdown(f"""
 unit_price, currency = get_pricing()
 unit_price_display = f"${unit_price:.2f} {currency}" if currency != "USD" else f"${unit_price:.0f}" if unit_price.is_integer() else f"${unit_price:.2f}"
 
+
+def get_app_base_url() -> str:
+    """Resolves the authoritative base URL for Stripe success/cancel redirects."""
+    explicit_url = os.getenv("APP_URL", "").strip()
+    if explicit_url:
+        return explicit_url.rstrip("/")
+    try:
+        if hasattr(st, "context") and hasattr(st.context, "headers"):
+            headers = st.context.headers
+            host = headers.get("host")
+            proto = headers.get("x-forwarded-proto", "https" if host and not ("localhost" in host or "127.0.0.1" in host) else "http")
+            if host:
+                return f"{proto}://{host}".rstrip("/")
+    except Exception:
+        pass
+    return "http://localhost:8501"
+
+
 # --- SESSION STATE & PERSISTENT USER HEADER ---
 if "auth_user" not in st.session_state:
     st.session_state.auth_user = None
@@ -764,7 +782,7 @@ with tab_analyze:
                 )
                 st.session_state[f"job_files_{analysis_rec.id}"] = analyzable_files
 
-                app_base_url = os.getenv("APP_URL", "http://localhost:8501")
+                app_base_url = get_app_base_url()
                 checkout_info = create_guest_checkout_session(
                     analysis_id=analysis_rec.id,
                     success_url=app_base_url,
@@ -1100,7 +1118,7 @@ with tab_signin:
                     btn_card_label = "Link Corporate Card (Stripe)"
 
                 if st.button(btn_card_label, key="btn_sync_card", type="primary" if not has_card else "secondary"):
-                    app_base_url = os.getenv("APP_URL", "http://localhost:8501")
+                    app_base_url = get_app_base_url()
                     setup_res = setup_organization_billing_session(
                         org_id=org.id,
                         org_name=org.name,
