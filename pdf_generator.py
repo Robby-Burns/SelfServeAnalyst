@@ -186,7 +186,29 @@ def generate_analysis_pdf(
     story.append(Spacer(1, 8))
     story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_GOLD, spaceAfter=10))
 
-    # 2. Scorecard Box (Clean Architecture & Code Metrics)
+    # 2. Executive Summary Box (For Laymen & Stakeholders)
+    exec_summary = analysis_metrics.get("exec_summary", "")
+    posture = analysis_metrics.get("posture_status", "PRODUCTION READY")
+    posture_color = "#DC2626" if "CRITICAL" in posture else ("#D97706" if "WARNING" in posture else "#166534")
+
+    summary_box = [
+        [
+            Paragraph(f"<b>Executive Summary:</b> {exec_summary}<br/><b>Audit Posture:</b> <font color='{posture_color}'><b>{posture}</b></font>", body_style)
+        ]
+    ]
+    summary_table = Table(summary_box, colWidths=[540])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), COLOR_LIGHT_BG),
+        ('BOX', (0, 0), (-1, -1), 1, COLOR_BORDER_GOLD),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8)
+    ]))
+    story.append(summary_table)
+    story.append(Spacer(1, 6))
+
+    # 3. Scorecard Box (Clean Architecture & Code Metrics)
     scorecard_data = [
         [
             Paragraph("<b>Language Dialect</b>", subtitle_style),
@@ -207,27 +229,30 @@ def generate_analysis_pdf(
         ('BACKGROUND', (0, 0), (-1, -1), COLOR_LIGHT_BG),
         ('BOX', (0, 0), (-1, -1), 1, COLOR_BORDER_GOLD),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, COLOR_BORDER_GOLD),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]))
     story.append(scorecard_table)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 6))
 
-    # 3. 7-Section Canonical Breakdown
-    # 1. Overview
-    story.append(Paragraph("1. Overview", section_heading))
+    # 4. 7-Section Canonical Breakdown
+    # 1. Overview & Data Flow
+    story.append(Paragraph("1. Overview & Data Flow", section_heading))
     overview_text = (
-        f"Source file <b>{analysis_metrics.get('filename', '')}</b> ({analysis_metrics.get('language', '')}) "
+        f"Source file <b>{os.path.basename(analysis_metrics.get('filename', ''))}</b> ({analysis_metrics.get('language', '')}) "
         f"contains {analysis_metrics.get('total_loc', 0)} total lines ({analysis_metrics.get('code_loc', 0)} executable) "
         f"with a cyclomatic complexity index of {analysis_metrics.get('complexity_score', 1.0)}."
     )
     story.append(Paragraph(overview_text, body_style))
+    data_flow = analysis_metrics.get("data_flow")
+    if data_flow:
+        story.append(Paragraph(f"<b>Execution Pipeline:</b> {data_flow}", body_style))
     story.append(Spacer(1, 6))
 
-    # 2. Business Logic
-    story.append(Paragraph("2. Business Logic", section_heading))
+    # 2. Business Logic & Component Responsibilities
+    story.append(Paragraph("2. Business Logic & Component Responsibilities", section_heading))
     for bl in analysis_metrics.get("business_logic", []):
         story.append(Paragraph(f"• {bl}", body_style))
     story.append(Spacer(1, 6))
@@ -260,8 +285,8 @@ def generate_analysis_pdf(
         story.append(Paragraph("In-memory ephemeral state (no persistent tables or explicit entity models declared).", body_style))
     story.append(Spacer(1, 6))
 
-    # 7. Best Practices Review & Security Findings
-    story.append(Paragraph("7. Best Practices & Security Review", section_heading))
+    # 7. Best Practices Review & Actionable Security Audit
+    story.append(Paragraph("7. Best Practices & Security Audit (SAST)", section_heading))
     bp = analysis_metrics.get("best_practices", {})
     story.append(Paragraph(f"• <b>Readability:</b> {bp.get('readability', 'Standard')}", body_style))
     story.append(Paragraph(f"• <b>Performance:</b> {bp.get('performance', 'Standard')}", body_style))
@@ -274,9 +299,15 @@ def generate_analysis_pdf(
         story.append(Spacer(1, 4))
         for f in findings:
             sev_color = "#DC2626" if f.get("severity") in ("CRITICAL", "HIGH") else "#D97706"
-            story.append(Paragraph(f"• <font color='{sev_color}'><b>[{f.get('severity')}] {f.get('category')}</b></font>: {f.get('message')}", body_style))
+            line_str = f"Line {f.get('line')}: " if f.get("line") else ""
+            story.append(Paragraph(f"• <font color='{sev_color}'><b>[{f.get('severity')}] {f.get('category')}</b></font> ({line_str}<code>{f.get('target', '')}</code>)", body_style))
+            if f.get("business_risk"):
+                story.append(Paragraph(f"&nbsp;&nbsp;&nbsp;&nbsp;<b>Business Risk:</b> <font color='#4B5563'><i>{f.get('business_risk')}</i></font>", body_style))
+            if f.get("remediation"):
+                story.append(Paragraph(f"&nbsp;&nbsp;&nbsp;&nbsp;<b>Remediation:</b> <font color='#1E40AF'><code>{f.get('remediation')}</code></font>", body_style))
+            story.append(Spacer(1, 2))
 
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 8))
 
     # Privacy Guarantee Footer
     privacy_box = [
