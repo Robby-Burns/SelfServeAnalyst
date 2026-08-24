@@ -161,7 +161,7 @@ def generate_analysis_pdf(
                     Paragraph("<b>THE RAM & CHISEL</b>", title_style),
                     Paragraph("<b>Precision Code Quality, Security & Documentation Audit</b>", subtitle_style),
                     Paragraph(
-                        f"<b>Target:</b> {analysis_metrics.get('filename', 'Source Code')} &nbsp;|&nbsp; <b>ID:</b> {analysis_id} &nbsp;|&nbsp; <b>Price:</b> ${price_charged:.2f} {currency}",
+                        f"<b>Target:</b> {os.path.basename(analysis_metrics.get('filename', 'Source Code'))} &nbsp;|&nbsp; <b>ID:</b> {analysis_id[:8]} &nbsp;|&nbsp; <b>Price:</b> ${price_charged:.2f} {currency}",
                         subtitle_style
                     )
                 ]
