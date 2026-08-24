@@ -241,23 +241,24 @@ def generate_analysis_pdf(
     story.append(Spacer(1, 6))
 
     # 5. Dependencies
-    story.append(Paragraph("5. Dependencies", section_heading))
-    deps = analysis_metrics.get("dependencies", [])
-    deps_str = ", ".join(deps) if deps else "None"
-    story.append(Paragraph(f"<b>External packages / engines:</b> {deps_str}", body_style))
+    story.append(Paragraph("5. Dependencies & Integrations", section_heading))
+    tp_deps = analysis_metrics.get("third_party_deps", [])
+    sl_deps = analysis_metrics.get("stdlib_deps", [])
+    tp_str = ", ".join(tp_deps) if tp_deps else "None (0 external packages)"
+    story.append(Paragraph(f"<b>Third-Party Packages:</b> {tp_str}", body_style))
+    if sl_deps:
+        story.append(Paragraph(f"<b>Standard Library Modules:</b> {', '.join(sl_deps)}", body_style))
     story.append(Spacer(1, 6))
 
-    # 6. Data Relationships (SQL/DAX only)
-    if analysis_metrics.get("language") in ("SQL", "DAX"):
-        story.append(Paragraph("6. Data Relationships (SQL/DAX only)", section_heading))
-        tables = analysis_metrics.get("tables_referenced", [])
-        joins = analysis_metrics.get("joins", [])
-        rel_text = f"<b>Referenced Tables:</b> {', '.join(tables) if tables else 'None'}"
-        story.append(Paragraph(rel_text, body_style))
-        if joins:
-            for j in joins:
-                story.append(Paragraph(f"• <b>{j.get('join_type', 'JOIN')}</b> {j.get('table')} ON {j.get('condition')}", body_style))
-        story.append(Spacer(1, 6))
+    # 6. Data Models & Persistence Structures
+    story.append(Paragraph("6. Data Models & Persistence Structures", section_heading))
+    d_models = analysis_metrics.get("data_models", [])
+    if d_models:
+        for dm in d_models:
+            story.append(Paragraph(f"• {dm}", body_style))
+    else:
+        story.append(Paragraph("In-memory ephemeral state (no persistent tables or explicit entity models declared).", body_style))
+    story.append(Spacer(1, 6))
 
     # 7. Best Practices Review & Security Findings
     story.append(Paragraph("7. Best Practices & Security Review", section_heading))
@@ -272,7 +273,7 @@ def generate_analysis_pdf(
     if findings:
         story.append(Spacer(1, 4))
         for f in findings:
-            sev_color = "#B91C1C" if f.get("severity") == "HIGH" else "#D97706"
+            sev_color = "#DC2626" if f.get("severity") in ("CRITICAL", "HIGH") else "#D97706"
             story.append(Paragraph(f"• <font color='{sev_color}'><b>[{f.get('severity')}] {f.get('category')}</b></font>: {f.get('message')}", body_style))
 
     story.append(Spacer(1, 10))
