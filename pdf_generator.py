@@ -60,7 +60,7 @@ BT
 0 -25 Td
 (Price: ${price_charged:.2f} {currency}) Tj
 0 -25 Td
-(Score: {analysis_metrics.get('quality_score', 100)}/100 Grade: {analysis_metrics.get('grade', 'A')}) Tj
+(Language: {analysis_metrics.get('language', 'General')} LOC: {analysis_metrics.get('total_loc', 0)}) Tj
 ET
 endstream
 endobj
@@ -186,23 +186,19 @@ def generate_analysis_pdf(
     story.append(Spacer(1, 8))
     story.append(HRFlowable(width="100%", thickness=1.5, color=COLOR_GOLD, spaceAfter=10))
 
-    # 2. Scorecard Box
-    conf_score = analysis_metrics.get("quality_score", 100)
-    conf_tier = "High Confidence" if conf_score >= 80 else ("Moderate Confidence" if conf_score >= 60 else "Review Required")
-    score_color = "#10B981" if conf_score >= 80 else ("#D8A246" if conf_score >= 60 else "#B91C1C")
-
+    # 2. Scorecard Box (Clean Architecture & Code Metrics)
     scorecard_data = [
         [
-            Paragraph("<b>Accuracy Confidence Score</b>", subtitle_style),
-            Paragraph("<b>Confidence Tier</b>", subtitle_style),
             Paragraph("<b>Language Dialect</b>", subtitle_style),
-            Paragraph("<b>Total LOC</b>", subtitle_style)
+            Paragraph("<b>Total LOC</b>", subtitle_style),
+            Paragraph("<b>Executable Code</b>", subtitle_style),
+            Paragraph("<b>Complexity Index</b>", subtitle_style)
         ],
         [
-            Paragraph(f"<font size=16 color='{score_color}'><b>{conf_score}%</b></font>", body_style),
-            Paragraph(f"<font size=16 color='{score_color}'><b>{conf_tier}</b></font>", body_style),
             Paragraph(f"<b>{analysis_metrics.get('language', 'General')}</b>", body_style),
-            Paragraph(f"<b>{analysis_metrics.get('total_loc', 0)} lines</b>", body_style)
+            Paragraph(f"<b>{analysis_metrics.get('total_loc', 0)} lines</b>", body_style),
+            Paragraph(f"<b>{analysis_metrics.get('code_loc', 0)} lines</b>", body_style),
+            Paragraph(f"<b>{analysis_metrics.get('complexity_score', 1.0)}</b>", body_style)
         ]
     ]
 
