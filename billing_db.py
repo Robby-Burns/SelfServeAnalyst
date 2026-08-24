@@ -362,6 +362,49 @@ def get_org_users(org_id: str):
         session.close()
 
 
+def remove_user_from_org(user_id: str, org_id: str):
+    """Removes a user from the organization roster."""
+    session = get_session()
+    try:
+        user = session.query(User).filter_by(id=user_id, organization_id=org_id).first()
+        if user:
+            user.organization_id = None
+            user.role = "user"
+            session.commit()
+            return True
+        return False
+    finally:
+        session.close()
+
+
+def update_user_role(user_id: str, org_id: str, new_role: str):
+    """Promotes or changes a team member's role within an organization."""
+    session = get_session()
+    try:
+        user = session.query(User).filter_by(id=user_id, organization_id=org_id).first()
+        if user:
+            user.role = new_role
+            session.commit()
+            return True
+        return False
+    finally:
+        session.close()
+
+
+def reset_user_password(user_id: str, new_password: str):
+    """Resets a user's password."""
+    session = get_session()
+    try:
+        user = session.query(User).filter_by(id=user_id).first()
+        if user:
+            user.password_hash = hash_password(new_password)
+            session.commit()
+            return True
+        return False
+    finally:
+        session.close()
+
+
 # --- Analysis & Price Snapshotting Helpers ---
 
 def create_analysis_record(

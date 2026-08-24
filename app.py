@@ -28,7 +28,10 @@ from billing_db import (
     update_file_analysis,
     update_analysis_status,
     get_org_usage,
-    get_user_usage
+    get_user_usage,
+    remove_user_from_org,
+    update_user_role,
+    reset_user_password
 )
 from stripe_service import (
     is_stripe_configured,
@@ -1099,8 +1102,44 @@ with tab_signin:
                 if members:
                     st.write("##### Active Team Members")
                     for m in members:
-                        role_tag = "👑 Administrator" if m["role"] == "admin" else "👤 Member"
-                        st.write(f"- **{m['email']}** &nbsp;—&nbsp; *{role_tag}*")
+                        is_current_user = m["id"] == user["id"]
+                        with st.container():
+                            c_info, c_role, c_actions = st.columns([3.5, 2, 2.5])
+                            with c_info:
+                                role_tag = "👑 Administrator" if m["role"] == "admin" else "👤 Member"
+                                you_tag = " *(You)*" if is_current_user else ""
+                                st.write(f"**{m['email']}**{you_tag}")
+                                st.caption(f"Role: {role_tag}")
+                            
+                            with c_role:
+                                if not is_current_user:
+                                    role_options = ["member", "admin"]
+                                    cur_idx = role_options.index(m["role"]) if m["role"] in role_options else 0
+                                    new_role = st.selectbox(
+                                        "Role",
+                                        options=role_options,
+                                        index=cur_idx,
+                                        format_func=lambda r: "Admin" if r == "admin" else "Member",
+                                        key=f"role_sel_{m['id']}",
+                                        label_visibility="collapsed"
+                                    )
+                                    if new_role != m["role"]:
+                                        if update_user_role(m["id"], user["organization_id"], new_role):
+                                            st.success(f"Updated {m['email']} to {new_role}")
+                                            st.rerun()
+                                else:
+                                    st.write(f"*{m['role'].capitalize()}*")
+
+                            with c_actions:
+                                if not is_current_user:
+                                    if st.button("Remove", key=f"btn_rem_{m['id']}", type="secondary"):
+                                        if remove_user_from_org(m["id"], user["organization_id"]):
+                                            st.success(f"Removed {m['email']} from organization.")
+                                            st.rerun()
+                                else:
+                                    st.caption("Owner Account")
+
+                        st.markdown("<hr style='margin: 0.3rem 0; border: none; border-top: 1px dashed #d1c7b7;'>", unsafe_allow_html=True)
 
         # ----------------------------------------------------------------------
         # B. PERSONAL ACCOUNT DASHBOARD
