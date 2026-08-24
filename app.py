@@ -857,19 +857,18 @@ with tab_preview:
                 filename=sample_data["filename"]
             )
 
-            # Accuracy Confidence Score Badge Component
-            conf_score = metrics.get('quality_score', 100)
-            conf_tier = "High Confidence" if conf_score >= 80 else ("Moderate Confidence" if conf_score >= 60 else "Review Required")
-            conf_chip_class = "conf-high" if conf_score >= 80 else ("conf-mod" if conf_score >= 60 else "conf-low")
+            # Audit Posture Badge Component
+            posture = metrics.get("posture_status", "PRODUCTION READY")
+            posture_class = "conf-high" if "PRODUCTION" in posture else ("conf-low" if "CRITICAL" in posture else "conf-mod")
 
             st.markdown(f"""
             <div class="hallmark-container">
                 <div class="hallmark-details">
                     <h3>{metrics.get('filename', sample_data['filename'])}</h3>
-                    <p>Language: <b>{metrics.get('language', 'General')}</b> &nbsp;|&nbsp; Volume: <b>{metrics.get('total_loc', 0)} LOC</b> &nbsp;|&nbsp; Complexity: <b>{metrics.get('complexity_score', 1.0)}</b></p>
+                    <p>Language: <b>{metrics.get('language', 'General')}</b> &nbsp;|&nbsp; Volume: <b>{metrics.get('total_loc', 0)} LOC ({metrics.get('code_loc', 0)} Executable)</b> &nbsp;|&nbsp; Complexity: <b>{metrics.get('complexity_score', 1.0)}</b></p>
                 </div>
                 <div>
-                    <span class="confidence-chip {conf_chip_class}">Accuracy Confidence Score: {conf_score}% ({conf_tier})</span>
+                    <span class="confidence-chip {posture_class}">{posture}</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
