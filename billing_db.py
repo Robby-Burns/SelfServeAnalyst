@@ -143,6 +143,28 @@ def init_db(db_uri=None):
         engine_kwargs["pool_pre_ping"] = True
         engine_kwargs["pool_recycle"] = 300
 
+        # If psycopg2 is not installed, automatically adapt to pg8000 for Neon
+        try:
+            import psycopg2  # noqa: F401
+        except ImportError:
+            if "+" not in db_uri.split("://")[0]:
+                import ssl
+                import urllib.parse
+                parsed = urllib.parse.urlparse(db_uri)
+                clean_url = urllib.parse.urlunparse((
+                    "postgresql+pg8000",
+                    parsed.netloc,
+                    parsed.path,
+                    "",
+                    "",
+                    ""
+                ))
+                db_uri = clean_url
+                ssl_ctx = ssl.create_default_context()
+                ssl_ctx.check_hostname = False
+                ssl_ctx.verify_mode = ssl.CERT_NONE
+                engine_kwargs["connect_args"] = {"ssl_context": ssl_ctx}
+
     _engine = create_engine(db_uri, **engine_kwargs)
     Base.metadata.create_all(_engine)
 
